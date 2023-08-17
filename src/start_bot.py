@@ -1,0 +1,33 @@
+from src import bot, dp
+from src.handlers import register_all_handlers
+from src.database import start_database, stop_database
+from settings import Config
+from src.utils import logger
+
+
+async def on_startup():
+    # Запуск базы данных
+    await start_database()
+
+    # Регистрация хэндлеров
+    register_all_handlers(dp)
+
+    logger.info('Бот запущен!')
+
+
+async def on_shutdown(_):
+    await stop_database()
+    if not Config.DEBUG:
+        for admin_id in Config.OWNER_IDS:
+            await bot.send_message(chat_id=admin_id, text='<b>Бот остановлен!</b>')
+
+
+async def start_bot():
+    dp.startup.register(on_startup)
+    dp.shutdown.register(on_shutdown)
+    await bot.delete_webhook(drop_pending_updates=False)
+
+    try:
+        await dp.start_polling(bot, close_bot_session=True)
+    except Exception as e:
+        logger.exception(e)
