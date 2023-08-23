@@ -4,13 +4,14 @@ from .models import Referral, User
 from src.utils import logger
 
 
-async def get_referrals_count_of_user(telegram_id: int) -> int:
-    try:
-        user = await User.get(telegram_id=telegram_id)
-        referrals = await user.referrals
-        return len([referral for referral in referrals])
-    except DoesNotExist:
+async def get_referrals_count_of_user(user_telegram_id: int) -> int:
+    user = await User.get_or_none(telegram_id=user_telegram_id)
+
+    if user is None:
         return 0
+
+    referral_count = await Referral.filter(referrer=user).count()
+    return referral_count
 
 
 async def get_referrer_of_user(telegram_id: int) -> User | None:

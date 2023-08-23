@@ -1,1 +1,1 @@
-from .user import ReplyKeyboards, InlineKeyboards
+from .user import PublicKeyboards, PrivateKeyboards

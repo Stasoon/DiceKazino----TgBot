@@ -1,5 +1,5 @@
 import os
-from typing import Final
+from typing import Final, Union
 from dotenv import load_dotenv, find_dotenv
 
 
@@ -7,14 +7,24 @@ load_dotenv(find_dotenv())
 
 
 class Config:
-    TOKEN: Final = os.getenv('BOT_TOKEN', 'define me')
-    OWNER_IDS: Final = tuple(int(i) for i in str(os.getenv('BOT_OWNER_IDS')).split(','))
-    CHAT_USERNAME: Final = os.getenv('GAME_CHAT_USERNAME')
+    class Bot:
+        TOKEN: Final[str] = os.getenv('BOT_TOKEN', 'define me')
+        OWNER_IDS: Final[tuple] = tuple(int(i) for i in str(os.getenv('BOT_OWNER_IDS')).split(','))
 
-    DB_URL: Final = os.getenv('DB_URL')
-    SQLITE_STORAGE_PATH = 'game_storage.db'
+    class Payments:
+        CRYPTO_BOT_TOKEN: Final[str] = os.getenv('CRYPTO_BOT_TOKEN')
+        PAYMENTS_CHANNEL_ID: Final[int] = int(os.getenv('PAYMENTS_CHANNEL_ID'))
+
+        percent_to_referrer: Final[float] = float(0.05)
+        commission: Final[float] = float(0.05)
+
+        min_withdraw_amount: Final[float] = float(50)
+        min_deposit_amount: Final[float] = float(10)
+
+    class Games:
+        GAME_CHAT_USERNAME: Final[str] = os.getenv('GAME_CHAT_USERNAME')
+
+    class Database:
+        DB_URL: Final = os.getenv('DB_URL')
 
     DEBUG: Final = bool(os.getenv('DEBUG'))
-
-
-percent_to_referrer = 0.05

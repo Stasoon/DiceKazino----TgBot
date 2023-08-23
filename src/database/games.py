@@ -1,17 +1,18 @@
-from typing import List
+from typing import List, Generator
 
 from tortoise.exceptions import DoesNotExist
 from tortoise.expressions import Q
+from tortoise.functions import Count
 
 from .models import Game, User
-from .users import get_user_obj
+from .users import get_user_or_none
 from src.misc import GameStatus, GameType
 
 
 # Create
 async def create_game(creator_telegram_id: int, max_players: int, game_type: GameType, bet: float) -> Game:
     status = GameStatus.ACTIVE if max_players == 1 else GameStatus.WAIT_FOR_PLAYERS
-    creator_user = await get_user_obj(telegram_id=creator_telegram_id)
+    creator_user = await get_user_or_none(telegram_id=creator_telegram_id)
 
     game = await Game.create(
         max_players=max_players,
@@ -37,7 +38,7 @@ async def get_players_of_game(game: Game) -> List[User]:
     return await game.players.all()
 
 
-async def get_player_ids(game: Game):
+async def get_player_ids_of_game(game: Game):
     return await game.players.all().values_list('telegram_id', flat=True)
 
 
@@ -50,8 +51,8 @@ async def is_game_full(game: Game) -> bool:
     return True if len(players) >= game.max_players else False
 
 
-async def get_available_games() -> list[Game]:
-    return await Game.filter(status=GameStatus.WAIT_FOR_PLAYERS)
+async def get_available_games(user_telegram_id: int) -> list[Game]:
+    return await Game.filter(status=GameStatus.WAIT_FOR_PLAYERS).exclude(players__telegram_id=user_telegram_id)
 
 
 async def get_user_participated_games(telegram_id: int) -> list[Game]:
@@ -73,11 +74,18 @@ async def get_user_active_game(telegram_id: int) -> Game | None:
     return game if game else None
 
 
+async def get_top_players(limit: int = 10) -> Generator:
+    top_players = await User.annotate(winnings_count=Count('games_won')).order_by('-winnings_count').limit(limit)
+
+    return ({'telegram_id': player.telegram_id, 'name': player.name, 'winnings_count': player.winnings_count}
+            for player in top_players if player.winnings_count > 0)
+
+
 # Update
 async def finish_game(game_number: int, winner_telegram_id: int = None) -> None:
     game = await Game.get(number=game_number)
 
-    winner_user = await get_user_obj(telegram_id=winner_telegram_id) if winner_telegram_id else None
+    winner_user = await get_user_or_none(telegram_id=winner_telegram_id) if winner_telegram_id else None
     game.winner = winner_user
     game.status = GameStatus.FINISHED.value
     await game.save()

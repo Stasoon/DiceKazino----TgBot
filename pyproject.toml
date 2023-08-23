@@ -12,8 +12,8 @@ loguru = "^0.7.0"
 python-dotenv = "^1.0.0"
 tortoise-orm = {extras = ["asyncpg"], version = "^0.20.0"}
 pydantic = "^2.1.1"
-aerich = "^0.7.2"
 aiocsv = "^1.2.4"
+cachetools = "^5.3.1"
 
 
 

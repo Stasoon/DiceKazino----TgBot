@@ -1,10 +1,8 @@
-from typing import List
-
 from aiogram import html
 from tortoise.models import Model
 from tortoise import fields
 
-from src.misc import GameStatus, GameType
+from src.misc import GameStatus, GameType, TransactionType
 
 
 class User(Model):
@@ -13,7 +11,6 @@ class User(Model):
     username = fields.CharField(max_length=32)
     balance = fields.DecimalField(max_digits=6, decimal_places=2)
     registration_date = fields.DatetimeField(auto_now_add=True)
-    bot_blocked = fields.BooleanField(default=False)
 
     def __str__(self):
         """Возвращает упоминание юзера"""
@@ -30,6 +27,7 @@ class Game(Model):
     winner = fields.ForeignKeyField('models.User', related_name='games_won', null=True)
     type = fields.CharEnumField(enum_type=GameType, max_length=1)
     status = fields.IntEnumField(enum_type=GameStatus, description=str(GameStatus))
+    start_time = fields.DatetimeField(auto_now_add=True)
 
     def __str__(self):
         return f'Игра {self.type.value}№{self.number}'
@@ -50,4 +48,8 @@ class Referral(Model):
 
 
 class Transaction(Model):
-    pass
+    id = fields.BigIntField(pk=True, generated=True)
+    user = fields.ForeignKeyField('models.User', related_name='transactions')
+    amount = fields.DecimalField(max_digits=6, decimal_places=2)
+    type = fields.CharEnumField(enum_type=TransactionType, max_length=8)
+    timestamp = fields.DatetimeField(auto_now_add=True)
