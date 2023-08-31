@@ -1,5 +1,5 @@
 import os
-from typing import Final, Union
+from typing import Final
 from dotenv import load_dotenv, find_dotenv
 
 
@@ -13,16 +13,18 @@ class Config:
 
     class Payments:
         CRYPTO_BOT_TOKEN: Final[str] = os.getenv('CRYPTO_BOT_TOKEN')
-        PAYMENTS_CHANNEL_ID: Final[int] = int(os.getenv('PAYMENTS_CHANNEL_ID'))
+        DEPOSITS_CHANNEL_ID: Final[int] = int(os.getenv('DEPOSITS_CHANNEL_ID'))
+        WITHDRAWS_CHANNEL_ID: Final[int] = int(os.getenv('WITHDRAWS_CHANNEL_ID'))
 
         percent_to_referrer: Final[float] = float(0.05)
-        commission: Final[float] = float(0.05)
+        winning_commission: Final[float] = float(0.05)
 
         min_withdraw_amount: Final[float] = float(50)
         min_deposit_amount: Final[float] = float(10)
 
     class Games:
-        GAME_CHAT_USERNAME: Final[str] = os.getenv('GAME_CHAT_USERNAME')
+        GAME_CHAT_ID: Final[int] = str(os.getenv('GAME_CHAT_ID'))
+        min_bet_amount: Final[float] = float(30)
 
     class Database:
         DB_URL: Final = os.getenv('DB_URL')

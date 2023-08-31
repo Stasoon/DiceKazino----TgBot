@@ -1,18 +1,29 @@
-from typing import Optional
+from typing import Optional, Literal
 
 from aiogram.filters.callback_data import CallbackData
 
-from .enums import TransactionType, PaymentMethod
+from .enums import TransactionType, PaymentMethod, GameType, GameCategory
 
 
 class GamesCallback(CallbackData, prefix="games"):
-    """number: int, action: str"""
-    game_number: int
-    action: str  # join / show / refresh / create
+    """
+    action: str  \n
+    game_number: Optional[int] = None  \n
+    game_category: Optional[GameCategory] = None  \n
+    game_type: Optional[GameType] = None
+    """
+    action: Literal['join', 'show', 'refresh', 'create', 'stats']
+    game_number: Optional[int] = None
+    game_category: Optional[GameCategory] = None
+    game_type: Optional[GameType] = None
 
 
 class NavigationCallback(CallbackData, prefix="nav"):
-    """Отвечает за навигацию в основных ветках меню. Если option не задана, возврат в ветку"""
+    """
+    Отвечает за навигацию в основных ветках меню. Если option не задана, возврат в ветку
+    branch: str
+    option: Optional[str] = None
+    """
     branch: str  # play / profile / info
     option: Optional[str] = None
 

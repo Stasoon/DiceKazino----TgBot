@@ -2,7 +2,7 @@ from aiogram import html
 from tortoise.models import Model
 from tortoise import fields
 
-from src.misc import GameStatus, GameType, TransactionType
+from src.misc import GameStatus, GameType, GameCategory, TransactionType
 
 
 class User(Model):
@@ -13,7 +13,7 @@ class User(Model):
     registration_date = fields.DatetimeField(auto_now_add=True)
 
     def __str__(self):
-        """Возвращает упоминание юзера"""
+        """Возвращает текст со ссылкой-упоминанием юзера в html"""
         link = f"tg://user?id={self.telegram_id}"
         mention = f'{html.link(self.name, link=link)}'
         return mention
@@ -25,12 +25,15 @@ class Game(Model):
     max_players = fields.SmallIntField()
     players = fields.ManyToManyField('models.User', related_name='games_participated')
     winner = fields.ForeignKeyField('models.User', related_name='games_won', null=True)
-    type = fields.CharEnumField(enum_type=GameType, max_length=1)
+    chat_id = fields.BigIntField(null=True)
+    message_id = fields.BigIntField(null=True)
+    category = fields.CharEnumField(enum_type=GameCategory, max_length=10)
+    game_type = fields.CharEnumField(enum_type=GameType, max_length=1)
     status = fields.IntEnumField(enum_type=GameStatus, description=str(GameStatus))
     start_time = fields.DatetimeField(auto_now_add=True)
 
     def __str__(self):
-        return f'Игра {self.type.value}№{self.number}'
+        return f'Игра №{self.number}'
 
 
 class PlayerMove(Model):
@@ -40,16 +43,18 @@ class PlayerMove(Model):
 
 
 class Referral(Model):
-    referrer = fields.ForeignKeyField('models.User', related_name='referred_by')
-    referred_user = fields.ForeignKeyField('models.User', related_name='referrals')
+    referrer = fields.ForeignKeyField('models.User', related_name='referred_by')  # тот, кто пригласил
+    referred_user = fields.ForeignKeyField('models.User', related_name='referrals')  # кого пригласили
 
     def __str__(self):
-        return f'Referral from {self.referrer} to {self.referred_user}'
+        return f'Реферал {self.referred_user} от {self.referrer}'
 
 
 class Transaction(Model):
     id = fields.BigIntField(pk=True, generated=True)
-    user = fields.ForeignKeyField('models.User', related_name='transactions')
+    recipient = fields.ForeignKeyField('models.User', related_name='received_transactions')
+    sender = fields.ForeignKeyField('models.User', related_name='sent_transactions', null=True)
+    game = fields.ForeignKeyField('models.Game', related_name='transactions', null=True)
     amount = fields.DecimalField(max_digits=6, decimal_places=2)
     type = fields.CharEnumField(enum_type=TransactionType, max_length=8)
     timestamp = fields.DatetimeField(auto_now_add=True)

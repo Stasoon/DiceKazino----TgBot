@@ -1,1 +1,4 @@
-from .user import PublicKeyboards, PrivateKeyboards
+from .user import (
+    UserPaymentKeyboards, UserMenuKeyboards,
+    UserPrivateGameKeyboards, UserPublicGameKeyboards,
+    UserTopPlayersKeyboards)

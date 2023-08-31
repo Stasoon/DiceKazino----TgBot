@@ -16,10 +16,11 @@ async def get_referrals_count_of_user(user_telegram_id: int) -> int:
 
 async def get_referrer_of_user(telegram_id: int) -> User | None:
     try:
-        # !!! Возможно, заменить на ReverseRelation
-        user = await User.get(telegram_id=telegram_id)
-        referral = await Referral.get(referred_user=user)
-        return referral.referrer
+        # Получаем объект Referral (пару реферал - реферрер)
+        referral = await Referral.get(referred_user__telegram_id=telegram_id)
+        # получаем юзера, который пригласил
+        referrer = await referral.referrer.first()
+        return referrer
     except DoesNotExist:
         return None
     except Exception as e:

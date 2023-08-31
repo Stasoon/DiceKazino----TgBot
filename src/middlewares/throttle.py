@@ -1,16 +1,14 @@
 from typing import Callable, Dict, Any, Awaitable, Union
 
-from random import randint
-
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message
 from cachetools import TTLCache
 
-from src.messages import ExceptionMessages
+from src.messages import get_throttling_message
 
 
 SECONDS_BETWEEN_ACTIONS = 1
-cache = TTLCache(maxsize=15_000, ttl=SECONDS_BETWEEN_ACTIONS)
+cache = TTLCache(maxsize=20_000, ttl=SECONDS_BETWEEN_ACTIONS)
 
 
 class ThrottlingMiddleware(BaseMiddleware):
@@ -26,7 +24,7 @@ class ThrottlingMiddleware(BaseMiddleware):
         cache[user_id] = message_count
 
         if message_count == 2:
-            await event.answer(ExceptionMessages.get_too_many_requests())
+            await event.answer(get_throttling_message())
             return
         elif message_count > 2:
             return
