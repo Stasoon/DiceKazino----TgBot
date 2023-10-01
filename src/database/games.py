@@ -1,9 +1,7 @@
-from datetime import timedelta, datetime
-from typing import List, Generator, Union
+from typing import List, Union
 
 from tortoise.exceptions import DoesNotExist
 from tortoise.expressions import Q
-from tortoise.functions import Count
 
 from .models import Game, User
 from .users import get_user_or_none
@@ -36,7 +34,7 @@ async def create_game(
     return game
 
 
-# Get
+# Read
 async def get_game_obj(game_number: int) -> Game:
     game = await Game.get(number=game_number)
     return game
@@ -55,7 +53,7 @@ async def get_players_of_game(game: Game) -> List[User]:
     return await game.players.all()
 
 
-async def get_player_ids_of_game(game: Game) -> List:
+async def get_player_ids_of_game(game: Game) -> List[int]:
     """Возвращает список с telegram id игроков"""
     return await game.players.all().values_list('telegram_id', flat=True)
 
@@ -95,8 +93,8 @@ async def get_bot_available_games(game_category: GameCategory) -> List[Game]:
 #         return []
 
 
-async def get_user_active_game(telegram_id: int) -> Game | None:
-    """Возвращает активную игру юзера (если статус - ACTIVE или WAIT_FOR_PLAYERS)"""
+async def get_user_unfinished_game(telegram_id: int) -> Game | None:
+    """Возвращает незаконченную игру юзера (если статус - ACTIVE или WAIT_FOR_PLAYERS)"""
     user = await User.get_or_none(telegram_id=telegram_id)
     await user.fetch_related('games_participated')
     game = await user.games_participated.filter(
@@ -106,26 +104,15 @@ async def get_user_active_game(telegram_id: int) -> Game | None:
     return game if game else None
 
 
-async def get_top_players(limit: int = 10, days_back: int = None) -> Generator:
-    """Возвращает генератор со словарями с ключами telegram_id name winnings_count"""
-    # если время указано, то возвращаем значения за это время
-    if days_back is not None:
-        start_date = datetime.now() - timedelta(days=days_back)
-        filter_condition = Q(games_won__start_time__gte=start_date)
-    else:
-        filter_condition = Q()  # Пустой фильтр для выборки за всё время
+async def get_user_active_game(telegram_id: int) -> Game | None:
+    """Возвращает активную игру юзера (если статус - ACTIVE)"""
+    user = await User.get_or_none(telegram_id=telegram_id)
+    await user.fetch_related('games_participated')
+    game = await user.games_participated.filter(
+        Q(status=GameStatus.ACTIVE) & Q(players=user)
+    ).all().first()
 
-    # Формируем запрос к базе данных
-    top_players = await User.annotate(
-        winnings_count=Count('games_won')
-    ).filter(
-        filter_condition, winnings_count__gt=0
-    ).order_by('-winnings_count').limit(limit)
-
-    return (
-        {'telegram_id': player.telegram_id, 'name': player.name, 'winnings_count': player.winnings_count}
-        for player in top_players
-    )
+    return game if game else None
 
 
 # Update
@@ -136,11 +123,7 @@ async def update_message_id(game: Game, new_message_id: int):
     await game.save()
 
 
-async def finish_game(game_number: int, winner_telegram_id: int = None) -> None:
-    game = await Game.get(number=game_number)
-
-    winner_user = await get_user_or_none(telegram_id=winner_telegram_id) if winner_telegram_id else None
-    game.winner = winner_user
+async def finish_game(game: Game) -> None:
     game.status = GameStatus.FINISHED
     await game.save()
 

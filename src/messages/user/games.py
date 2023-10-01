@@ -1,8 +1,12 @@
+from typing import Collection
+
 from aiogram import html
 
-from src.misc import GameCategory
+from src.database import games, Game, PlayerScore, get_user_or_none, get_user_balance, get_users_with_top_winnings
+from src.utils.cards import Card
 from src.utils.texts import format_float_to_rub_string
-from src.database import games, Game, PlayerMove, get_user_or_none, get_user_balance, get_users_with_top_winnings
+from src.misc.enums import BaccaratBettingOption
+from src.misc import GameCategory
 from settings import Config
 
 
@@ -27,7 +31,7 @@ def _get_game_header(game: Game):
     return f'{game.game_type.value} {game.game_type.get_full_name()} №{game.number}'
 
 
-async def _get_players_results(game_moves: list[PlayerMove]) -> str:
+async def _get_players_results(game_moves: list[PlayerScore]) -> str:
     strings = []
 
     for move in game_moves:
@@ -55,8 +59,36 @@ async def _get_game_participants(game: Game):
 
 class BaccaratMessages:
     @staticmethod
-    def get_baccarat_bet_prompt() -> str:
+    def get_bet_prompt() -> str:
         return 'Выберите, на чью победу хотите поставить:'
+
+    @staticmethod
+    async def get_baccarat_results(bet_choices: Collection[PlayerScore]):
+        text = 'Результаты \n\n'
+        for choice in bet_choices:
+            text += f'{await choice.player.get()} — '
+            match choice.value:
+                case BaccaratBettingOption.PLAYER.value:
+                    text += 'игрок \n'
+                case BaccaratBettingOption.BANKER.value:
+                    text += 'банкир \n'
+                case _:
+                    text += 'ничья \n'
+        return text
+
+
+class BlackJackMessages:
+    @staticmethod
+    def get_cards_text(cards: Collection[Card], player_points: int) -> str:
+        result = f'{html.bold(f"Ваш счёт: {player_points}")} \n\n'
+        result += '  •  '.join(f'{card.suit} {card.value}' for card in cards)
+        return result
+
+    @staticmethod
+    def get_too_many_points(cards: Collection[Card], player_points: int) -> str:
+        result = BlackJackMessages.get_cards_text(cards, player_points)
+        result += ' \n\nПеребор очков! Вы проиграли.'
+        return result
 
 
 class UserPrivateGameMessages:
@@ -80,7 +112,7 @@ class UserPrivateGameMessages:
             top_winnings = await get_users_with_top_winnings(category, days_back=period['days_back'], limit=3)
             text += f"{html.bold(period['label'])} \n"
             for medal, user in zip(medals, top_winnings):
-                text += f"{medal} {user} [{format_float_to_rub_string(user.total_bet)}]\n"
+                text += f"{medal} {user} [{format_float_to_rub_string(user.winnings_amount)}]\n"
 
         text += html.bold("\nℹ В статистику входят суммы ставок")
         return text
@@ -135,7 +167,7 @@ class UserPublicGameMessages:
         return result
 
     @staticmethod
-    async def get_game_in_chat_finish(game: Game, winner_id: int | None, game_moves: list[PlayerMove],
+    async def get_game_in_chat_finish(game: Game, winner_id: int | None, game_moves: list[PlayerScore],
                                       win_amount: float):
         # Получаем заголовок игры
         header = _get_game_header(game)

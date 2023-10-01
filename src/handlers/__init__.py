@@ -12,6 +12,6 @@ def register_all_handlers(dp: Dispatcher):
     admin_router = Router(name='admin_router')
     register_admin_handlers(admin_router)
 
-    dp.include_routers(user_router, admin_router)
+    dp.include_routers(admin_router, user_router)
 
     register_errors_handler(dp)

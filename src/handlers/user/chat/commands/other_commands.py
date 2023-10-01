@@ -17,7 +17,7 @@ async def handle_profile_command(message: Message):
 
 
 async def handle_my_games_command(message: Message):
-    game = await games.get_user_active_game(message.from_user.id)
+    game = await games.get_user_unfinished_game(message.from_user.id)
     if not game:
         await message.answer(GameErrors.get_no_active_games(), parse_mode='HTML')
         return
@@ -86,7 +86,7 @@ async def handle_delete_game_command(message: Message):
         except TelegramBadRequest:
             pass
         await games.cancel_game(game)
-        await transactions.refund((message.from_user.id,), amount=game.bet, game=game)
+        await transactions.refund(await games.get_player_ids_of_game(game), amount=game.bet, game=game)
 
 
 def register_other_commands_handlers(router: Router):

@@ -9,14 +9,14 @@ from src.messages import InputErrors, BalanceErrors, GameErrors
 from src.misc import GameStatus
 
 
-def validate_game_start(args_count: int = 1, min_bet: int = 30):
+def validate_create_game_start_cmd(args_count: int = 1, min_bet: int = 30):
     def decorator(func):
         @wraps(func)
         async def wrapper(message: Message, command: CommandObject, *args, **kwargs):
             try:
                 cmd_args = command.args.split()
                 bet = float(cmd_args[0])
-                user_active_game = await games.get_user_active_game(message.from_user.id)
+                user_active_game = await games.get_user_unfinished_game(message.from_user.id)
                 balance = await users.get_user_balance(telegram_id=message.from_user.id)
             except AttributeError:
                 await message.reply(InputErrors.get_cmd_invalid_argument_count(args_count))
@@ -59,11 +59,12 @@ async def validate_join_game_request(callback: CallbackQuery, game: Game) -> boo
     Проверки: баланс для ставки, участие в этой / другой игре, есть ли места"""
     user_id = callback.from_user.id
     balance = await users.get_user_balance(user_id)
-    user_active_game = await games.get_user_active_game(user_id)
+    user_active_game = await games.get_user_unfinished_game(user_id)
 
     # если игра уже закончена
     if game.status in (GameStatus.CANCELED, GameStatus.FINISHED):
         await callback.answer(text=GameErrors.get_game_is_full())
+        return False
     # если баланс меньше ставки
     elif balance < game.bet:
         await callback.answer(text=BalanceErrors.get_low_balance(), show_alert=True)

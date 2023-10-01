@@ -52,30 +52,33 @@ FAQ telegram.org/faq | Скачать telegram.org/apps'''
         return f'✅ <b>Успешно разослано {successful_count} пользователям.</b>'
 
 
-class Utils:
-    @classmethod
-    async def send_message_to_user(cls, bot: Bot, user_id: int, from_chat_id: int, message_id: int,
-                                   markup: InlineKeyboardMarkup = None) -> bool:
+class Mailer:
+    def __init__(self, bot: Bot, to_user_ids: AsyncIterable,
+                 message_to_copy_id: int, from_chat_id: int,
+                 markup: InlineKeyboardMarkup = None):
+        self.bot = bot
+        self.user_ids = to_user_ids
+        self.message_id = message_to_copy_id
+        self.from_chat_id = from_chat_id
+        self.markup = markup
+
+    async def _send_message_to_user(self, user_id: int) -> bool:
         try:  # пробуем скопировать сообщение с постом в чат пользователю
-            await bot.copy_message(user_id, from_chat_id, message_id, reply_markup=markup)
+            await self.bot.copy_message(user_id, self.from_chat_id, self.message_id, reply_markup=self.markup)
         except TelegramRetryAfter as e:  # обрабатываем ошибку слишком частой отправки
             await asyncio.sleep(e.retry_after)
-            return await cls.send_message_to_user(bot, user_id, from_chat_id, message_id, markup)
+            return await self._send_message_to_user(user_id)
         except Exception as e:
             logger.error(e)
             return False
         else:  # возвращаем True, если прошло успешно
             return True
 
-
-class Mailer:
-    @classmethod
-    async def start_mailing(cls, bot: Bot, to_user_ids: AsyncIterable, message_id: int, from_chat_id: int,
-                            markup: InlineKeyboardMarkup = None) -> int:
+    async def start_mailing(self) -> int:
         successful_count = 0
         try:
-            async for user_id in to_user_ids:
-                if await Utils.send_message_to_user(bot, user_id, from_chat_id, message_id, markup):
+            async for user_id in self.user_ids:
+                if await self._send_message_to_user(user_id):
                     successful_count += 1
                 await asyncio.sleep(0.05)
         finally:
@@ -128,10 +131,13 @@ async def handle_url_button_data(message: Message, state: FSMContext):
 
 async def handle_continue_wout_button_callback(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text(Messages.prepare_post(), parse_mode='HTML')
-    await Mailer.start_mailing(callback.message.bot, to_user_ids=(callback.from_user.id,),
-                               message_id=(await state.get_data()).get('message_id'),
-                               from_chat_id=callback.from_user.id, markup=None)
-
+    # копируем текущий пост
+    await callback.bot.copy_message(
+        chat_id=callback.from_user.id,
+        from_chat_id=callback.from_user.id,
+        message_id=(await state.get_data()).get('message_id')
+    )
+    # просим подтверждения
     await callback.message.answer(Messages.ask_about_start_mailing(),
                                   reply_markup=AdminKeyboards.mailing.get_confirm_mailing(),
                                   parse_mode='HTML')
@@ -142,15 +148,16 @@ async def handle_confirm_mailing_callback(callback: CallbackQuery, state: FSMCon
     await callback.message.edit_text(Messages.get_mailing_started(), parse_mode='HTML')
 
     data = await state.get_data()
-    successful_count = await Mailer.start_mailing(
+    mailer = Mailer(
         bot=callback.message.bot,
         to_user_ids=get_all_user_ids(),
-        message_id=data.get('message_id'),
+        message_to_copy_id=data.get('message_id'),
         from_chat_id=callback.from_user.id,
         markup=data.get('markup')
     )
+    successful_count = await mailer.start_mailing()
 
-    await callback.message.answer(Messages.get_successful_mailed(successful_count), parse_mode='HTML')
+    await callback.message.answer(text=Messages.get_successful_mailed(successful_count), parse_mode='HTML')
     await state.clear()
 
 

@@ -5,6 +5,11 @@ from aiogram.filters.callback_data import CallbackData
 from .enums import TransactionType, PaymentMethod, GameType, GameCategory
 
 
+class BlackJackCallback(CallbackData, prefix='BJ'):
+    game_number: int
+    move: Literal['take', 'stand']
+
+
 class GamesCallback(CallbackData, prefix="games"):
     """
     action: str  \n

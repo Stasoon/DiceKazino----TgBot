@@ -1,6 +1,6 @@
 from aiogram.utils.keyboard import InlineKeyboardMarkup, InlineKeyboardBuilder
 
-from src.database import games
+from src.database import transactions
 from src.misc import NavigationCallback
 
 
@@ -8,12 +8,12 @@ async def get_top_markup(stars: list, days: int = None):
     """Возвращает клавиатуру с топом игроков за конкретный период. \n
     ! stars - костыль, список из трёх строк ['', '', '⭐'],
     где одна - звёздочка, которая подставляется в выбранную кнопку"""
-    top_players = await games.get_top_players(days_back=days)
+    top_players = await transactions.get_top_players(days_back=days)
     builder = InlineKeyboardBuilder()
-    for data in top_players:
+    for user in top_players:
         builder.button(
-            text=f"👤 {data.get('name')} | 🏆 {data.get('winnings_count')}",
-            url=f"tg://user?id={data.get('telegram_id')}"
+            text=f"👤 {user.name} | 🏆 {user.wins_count}",
+            url=f"tg://user?id={user.telegram_id}"
         )
     builder.adjust(1)
 

@@ -14,7 +14,8 @@ async def set_bot_commands():
         scope=BotCommandScopeAllGroupChats(),
         commands=[
             BotCommand(command='profile', description='Информация о профиле'),
-            BotCommand(command='mygames', description='Незавершённые игры'),
+            BotCommand(command='mygames', description='Мои незавершённые игры'),
+            BotCommand(command='allgames', description='Незавершённые игры чата'),
         ]
     )
 
@@ -32,7 +33,7 @@ async def on_startup():
     logger.info('Бот запущен!')
 
 
-async def on_shutdown(_):
+async def on_shutdown():
     await stop_database()
     if not Config.DEBUG:
         for admin_id in Config.Bot.OWNER_IDS:

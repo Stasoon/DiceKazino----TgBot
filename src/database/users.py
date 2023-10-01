@@ -1,4 +1,4 @@
-from typing import Generator
+from typing import AsyncGenerator
 
 from .models import User
 
@@ -21,7 +21,7 @@ async def get_user_balance(telegram_id: int) -> float:
     return user.balance
 
 
-async def get_all_user_ids() -> list[int]:
+async def get_all_user_ids() -> AsyncGenerator[int, None]:
     async for user_id in User.all().values_list('telegram_id', flat=True):
         yield user_id
 

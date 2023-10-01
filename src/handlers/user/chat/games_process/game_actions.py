@@ -3,9 +3,9 @@ import asyncio
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, ForceReply
 
-from src.database import games, transactions, player_moves, Game
+from src.database import games, transactions, game_scores, Game
 from src.messages.user import UserPublicGameMessages
-from src.misc import GamesCallback
+from src.misc import GamesCallback, GameStatus
 from src.utils.game_validations import validate_join_game_request
 
 
@@ -37,44 +37,49 @@ async def join_chat_game(callback: CallbackQuery, game: Game):
 
 async def process_player_move(game: Game, message: Message):
     """Обрабатывает ход в игре в чате"""
-    game_moves = await player_moves.get_game_moves(game)
+    game_moves = await game_scores.get_game_moves(game)
     player_telegram_id = message.from_user.id
     dice_value = message.dice.value
 
     # если не все игроки сделали ходы
     if len(game_moves) < game.max_players:
-        await player_moves.add_player_move_if_not_moved(game, player_telegram_id=player_telegram_id, move_value=dice_value)
+        await game_scores.add_player_move_if_not_moved(game, player_telegram_id=player_telegram_id, move_value=dice_value)
 
     # если все походили, ждём окончания анимации и заканчиваем игру
-    if len(await player_moves.get_game_moves(game)) == game.max_players:
-        seconds_to_wait = 3
-        await asyncio.sleep(seconds_to_wait)
+    if len(await game_scores.get_game_moves(game)) == game.max_players:
         await finish_game(game, message)
 
 
 async def finish_game(game: Game, message: Message):
+    if game.status == GameStatus.FINISHED:
+        return
+
     win_coefficient = 2
-    game_moves = await player_moves.get_game_moves(game)
+    game_moves = await game_scores.get_game_moves(game)
+    await games.finish_game(game)
+    await game_scores.delete_game_scores(game)
     winner_id = None
 
-    if all(move.value == game_moves[0].value for move in game_moves):  # Если значения одинаковы (ничья)
+    max_move = max(game_moves, key=lambda move: move.value)
+
+    if all(move.value == max_move for move in game_moves):  # Если значения одинаковы (ничья)
         # Возвращаем деньги участникам
         for move in game_moves:
             player = await move.player.get()
             await transactions.refund((player.telegram_id,), game=game, amount=game.bet)
     else:  # значения разные
         # Получаем победителя
-        max_move = max(game_moves, key=lambda move: move.value)
         winner_id = (await max_move.player.get()).telegram_id
         # Начисляем выигрыш на баланс
         await transactions.accrue_winnings(game, winner_id, game.bet * win_coefficient)
 
-    await games.finish_game(game.number, winner_id)
+    seconds_to_wait = 3
+    await asyncio.sleep(seconds_to_wait)
+
     await message.answer(
         text=await UserPublicGameMessages.get_game_in_chat_finish(game, winner_id, game_moves, game.bet * win_coefficient),
         parse_mode='HTML'
     )
-    await player_moves.delete_game_moves(game)
 
 # endregion Utils
 
@@ -82,7 +87,7 @@ async def finish_game(game: Game, message: Message):
 
 
 async def handle_game_move_message(message: Message):
-    game = await games.get_user_active_game(message.from_user.id)
+    game = await games.get_user_unfinished_game(message.from_user.id)
     dice = message.dice
 
     # Если игрок есть в игре и тип эмодзи соответствует

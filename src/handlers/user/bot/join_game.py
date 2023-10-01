@@ -6,22 +6,36 @@ from src.database import games, Game, transactions
 from src.misc import GamesCallback, GameCategory
 from src.utils.game_validations import validate_join_game_request
 
-from .baccarat import start_baccarat_game
-from .basic_games import start_basic_game
+from src.handlers.user.bot.game_strategies import BlackJackStrategy, BaccaratStrategy, BasicGameStrategy
 
+
+# region Utils
 
 async def add_user_to_bot_game(callback: CallbackQuery, game: Game):
     await callback.message.delete()
     await games.add_user_to_game(callback.from_user.id, game.number)
+    bot = callback.bot
 
-    # если игра заполнена
+    # если игра заполнилась, перенаправляем на начало нужной игры (в зависимости от категории)
     if await games.is_game_full(game):
-        # перенаправляем на начало нужной игры
-        if game.category == GameCategory.BASIC:
-            await start_basic_game(callback, game)
-        elif game.category == GameCategory.BACCARAT:
-            await start_baccarat_game(callback, game)
+        await games.activate_game(game)
+        strategy = None
 
+        match game.category:
+            case GameCategory.BASIC:
+                strategy = BasicGameStrategy
+            case GameCategory.BACCARAT:
+                strategy = BaccaratStrategy
+            case GameCategory.BLACKJACK:
+                strategy = BlackJackStrategy
+
+        if strategy:
+            await strategy.start_game(callback, game)
+
+
+# endregion
+
+# region Handlers
 
 async def handle_join_game_callback(callback: CallbackQuery, callback_data: GamesCallback, state: FSMContext):
     # отменяем состояние игрока
@@ -31,6 +45,8 @@ async def handle_join_game_callback(callback: CallbackQuery, callback_data: Game
     if await validate_join_game_request(callback, game):
         await add_user_to_bot_game(callback, game)
         await transactions.debit_bet(game, callback.from_user.id, game.bet)
+
+# endregion
 
 
 def register_join_game_handlers(router: Router):

@@ -3,15 +3,14 @@ from decimal import Decimal
 from typing import Iterable
 
 from tortoise.exceptions import DoesNotExist
-from tortoise.functions import Sum
+from tortoise.functions import Sum, Count
 
-from .models import Transaction, TransactionType, User, Game, Referral
+from .models import Transaction, User, Game
+from src.misc import TransactionType
 from .referrals import get_referrer_of_user
 from src.misc import GameCategory
 from settings import Config
 
-
-# Create
 
 async def accrue_winnings(game: Game, winner_telegram_id: int, amount: float) -> float:
     """Начисление выигрыша победителю и процента пригласившему"""
@@ -143,19 +142,38 @@ async def get_referral_earnings(user_telegram_id: int) -> float:
     return deposits_sum if deposits_sum else 0.0
 
 
-async def get_users_with_top_winnings(category: GameCategory, days_back: int = None, limit: int = 3):
-    """Возвращает юзеров с наибольшими суммами выигрыша в конкретной категории игр"""
-    query = User.filter(
-        # тип транзакции - выигрыш, категория игр - запрашиваемая
-        received_transactions__type=TransactionType.WINNING, received_transactions__game__category=category
-    )
-
-    if days_back:
+async def get_users_with_top_winnings(category: GameCategory, days_back: int = None, limit: int = 3) -> list[User]:
+    """Возвращает топ по суммам выигрыша в виде списка User с добавленным полем winnings_amount"""
+    if days_back is None:
+        start_date = datetime.min  # Установите начальную дату как 0 дней назад
+    else:
+        # Вычисляем дату, до которой нужно учитывать транзакции (сегодня - days_back дней)
         start_date = datetime.now() - timedelta(days=days_back)
-        query = query.filter(received_transactions__timestamp__gte=start_date)
 
-    users = await query.annotate(
-        total_bet=Sum('received_transactions__amount')
-    ).order_by('-total_bet').limit(limit)  # сортируем по количеству и получаем первые несколько
+    top_players = await User.filter(
+        received_transactions__type=TransactionType.WINNING,
+        received_transactions__timestamp__gte=start_date,
+        received_transactions__game__category=category
+    ).annotate(
+        winnings_amount=Sum('received_transactions__amount')
+    ).order_by('-winnings_amount').limit(limit)
 
-    return users
+    return top_players
+
+
+async def get_top_players(days_back: int = None, limit: int = 10) -> list[User]:
+    """Возвращает топ по количеству выигрышей в виде списка User с добавленным полем wins_count"""
+    if days_back is None:
+        start_date = datetime.min  # Установите начальную дату как 0 дней назад
+    else:
+        # Вычисляем дату, до которой нужно учитывать транзакции (сегодня - days_back дней)
+        start_date = datetime.now() - timedelta(days=days_back)
+
+    top_players = await User.filter(
+        received_transactions__type=TransactionType.WINNING,
+        received_transactions__timestamp__gte=start_date
+    ).annotate(
+        wins_count=Count('received_transactions')
+    ).order_by('-wins_count').limit(limit)
+
+    return top_players

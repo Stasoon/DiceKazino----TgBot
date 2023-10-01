@@ -14,5 +14,4 @@ class IsAdminFilter(BaseFilter):
         # получать id админов из csv
         admin_ids = []
         flag = event.from_user.id in [*Config.Bot.OWNER_IDS, admin_ids]
-        print('is_admin', flag is self.should_be_admin)
         return flag is self.should_be_admin

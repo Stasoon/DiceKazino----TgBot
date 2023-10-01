@@ -1,6 +1,12 @@
 from enum import IntEnum, Enum
 
 
+class BaccaratBettingOption(IntEnum):
+    PLAYER = 1
+    TIE = 2
+    BANKER = 3
+
+
 class TransactionType(str, Enum):
     WITHDRAW = 'withdraw'
     DEPOSIT = 'deposit'

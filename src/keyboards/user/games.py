@@ -3,6 +3,7 @@ from aiogram.enums.dice_emoji import DiceEmoji
 
 from src.database import Game, games
 from src.misc import GamesCallback, NavigationCallback, GameType, GameCategory
+from src.misc.callback_factories import BlackJackCallback
 
 
 class BaccaratKeyboards:
@@ -13,6 +14,16 @@ class BaccaratKeyboards:
             [KeyboardButton(text='🤝 Ничья')],
             [KeyboardButton(text='🏦 Банкир')],
         ])
+
+
+class BlackJackKeyboards:
+    @staticmethod
+    def get_controls(game_number: int) -> InlineKeyboardMarkup:
+        builder = InlineKeyboardBuilder()
+        builder.button(text='👇 Взять', callback_data=BlackJackCallback(game_number=game_number, move='take'))
+        builder.button(text='✋ Хватит', callback_data=BlackJackCallback(game_number=game_number, move='stand'))
+        return builder.as_markup()
+        # "🙅‍♂ Отказаться"
 
 
 # клавиатуры для отображения в боте
@@ -48,13 +59,13 @@ class UserPrivateGameKeyboards:
         builder.button(text='📊 Статистика', callback_data=GamesCallback(action='stats', game_category=category))
 
         for game in available_games[:10]:
-            text = f'{game.game_type.value}#{game.number} | 💰{game.bet} | {(await games.get_players_of_game(game))[0].name}'
+            text = f'{game.game_type.value}#{game.number} | 💰{game.bet} | {(await games.get_creator_of_game(game)).name}'
             builder.button(
                 text=text,
                 callback_data=GamesCallback(action='show', game_category=category, game_number=game.number)
             ).row()
 
-        builder.button(text='🔙 Назад', callback_data=NavigationCallback(branch='games_process'))
+        builder.button(text='🔙 Назад', callback_data=NavigationCallback(branch='game_strategies'))
         builder.adjust(2, 1)
         return builder.as_markup()
 
@@ -70,7 +81,7 @@ class UserPrivateGameKeyboards:
         """Возвращает клавиатуру для выбора типа базовой игры при её создании"""
         builder = InlineKeyboardBuilder()
         # ide может ругаться, но всё в порядке
-        dice_emojis = [i.value for i in DiceEmoji]
+        dice_emojis = [emoji.value for emoji in DiceEmoji]
 
         for game_type in GameType:
             if game_type.value in dice_emojis:

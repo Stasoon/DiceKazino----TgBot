@@ -6,7 +6,7 @@ from src.database import games, transactions
 from src.keyboards import UserPublicGameKeyboards
 from src.messages import UserPublicGameMessages
 from src.misc import GameType, GameCategory
-from src.utils.game_validations import validate_game_start
+from src.utils.game_validations import validate_create_game_start_cmd
 
 
 async def create_game_and_send(message: Message, command: CommandObject, game_type: GameType, users_count: int):
@@ -43,7 +43,7 @@ game_type_map = {
 }
 
 
-@validate_game_start(args_count=1)
+@validate_create_game_start_cmd(args_count=1)
 async def handle_games_for_two_players_commands(message: Message, command: CommandObject):
     await create_game_and_send(message, command, game_type=game_type_map.get(command.command), users_count=2)
 

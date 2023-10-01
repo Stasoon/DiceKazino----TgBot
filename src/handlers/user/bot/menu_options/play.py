@@ -14,19 +14,6 @@ from settings import Config
 
 # region Utils
 
-async def show_game(message: Message, game_number: int):
-    """Показать игру, когда человек перешёл из чата в бота"""
-    game = await games.get_game_obj(game_number)
-
-    if game and game.status == GameStatus.WAIT_FOR_PLAYERS:
-        await message.answer(
-            text=await get_full_game_info_text(game),
-            reply_markup=await UserPrivateGameKeyboards.show_game(game),
-            parse_mode='HTML'
-        )
-    else:
-        await message.answer(GameErrors.get_game_is_finished(), parse_mode='HTML')
-
 
 async def validate_and_get_deposit_amount(amount_message: Message) -> float | None:
     """Делает проверку суммы депозита, написанной в сообщении.
@@ -122,13 +109,14 @@ async def handle_refresh_games_callback(callback: CallbackQuery, callback_data: 
 
 async def handle_create_game_callback(callback: CallbackQuery, callback_data: GamesCallback, state: FSMContext):
     """Обработка нажатия на кнопку Создать"""
-    user_active_game = await games.get_user_active_game(callback.from_user.id)
+    user_active_game = await games.get_user_unfinished_game(callback.from_user.id)
     if user_active_game:
         await callback.answer(text=GameErrors.get_another_game_not_finished(user_active_game))
         return
 
     game_category = callback_data.game_category
 
+    # СЮДА ДОБАВЛЯТЬ СОЗДАНИЕ ИГРЫ
     if game_category == GameCategory.BASIC:
         await show_basic_game_types(callback.message)
     else:
@@ -226,4 +214,4 @@ def register_play_handlers(router: Router):
     router.message.register(handle_bet_amount_message, UserStates.EnterBet.wait_for_bet_amount)
 
     router.callback_query.register(handle_back_in_play_callback, NavigationCallback.filter(
-        (F.branch == 'games_process') & ~F.option))
+        (F.branch == 'game_strategies') & ~F.option))

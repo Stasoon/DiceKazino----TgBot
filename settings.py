@@ -24,6 +24,7 @@ class Config:
 
     class Games:
         GAME_CHAT_ID: Final[int] = str(os.getenv('GAME_CHAT_ID'))
+        CARD_IMAGES_PATH: str = 'cards'
         min_bet_amount: Final[float] = float(30)
 
     class Database:
