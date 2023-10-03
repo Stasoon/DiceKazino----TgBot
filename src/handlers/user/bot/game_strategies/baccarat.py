@@ -3,13 +3,13 @@ from typing import Collection, Union, Any, Generator
 
 from aiogram import Router, F, Bot
 from aiogram.enums import ChatAction
-from aiogram.types import CallbackQuery, Message, ReplyKeyboardRemove
+from aiogram.types import Message, ReplyKeyboardRemove
 
 from src.database import Game, PlayerScore, games, game_scores, transactions, playing_cards
 from src.handlers.user.game_strategy import GameStrategy
 from src.misc.enums import BaccaratBettingOption
 from src.utils.game_messages_sender import GameMessageSender
-from src.utils.generate_card_images import BaccaratImagePainter
+from src.utils.card_images import BaccaratImagePainter
 from src.keyboards.user.games import BaccaratKeyboards
 from src.messages.user.games import BaccaratMessages
 from src.keyboards import UserMenuKeyboards
@@ -170,11 +170,11 @@ async def send_result_to_players(bot, game: Game, bet_choices: Collection[Player
 class BaccaratStrategy(GameStrategy):
 
     @staticmethod
-    async def start_game(callback: CallbackQuery, game: Game):
+    async def start_game(bot: Bot, game: Game):
         """Когда все игроки собраны, вызывается функция для старта игры в баккара"""
         text = BaccaratMessages.get_bet_prompt()
         reply_markup = BaccaratKeyboards.get_bet_options()
-        await GameMessageSender(callback.bot, game).send(text, markup=reply_markup)
+        await GameMessageSender(bot, game).send(text, markup=reply_markup)
 
     @staticmethod
     def __interpret_user_bet_choice(bet_text: str) -> int:

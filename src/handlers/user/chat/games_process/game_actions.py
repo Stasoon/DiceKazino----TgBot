@@ -4,8 +4,9 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, ForceReply
 
 from src.database import games, transactions, game_scores, Game
+from src.handlers.user.bot.game_strategies import BlackJackStrategy, BaccaratStrategy
 from src.messages.user import UserPublicGameMessages
-from src.misc import GamesCallback, GameStatus
+from src.misc import GamesCallback, GameStatus, GameCategory
 from src.utils.game_validations import validate_join_game_request
 
 
@@ -17,13 +18,19 @@ async def start_chat_game(game: Game, callback: CallbackQuery):
     await callback.message.delete()
 
     markup = ForceReply(selective=True, input_field_placeholder=f'Отправьте {game.game_type.value}')
-    msg = await callback.message.bot.send_message(
-        chat_id=callback.message.chat.id,
-        text=await UserPublicGameMessages.get_game_in_chat_start(game),
-        reply_markup=markup, parse_mode='HTML'
-    )
 
-    await games.update_message_id(game, msg.message_id)
+    match game.category:
+        case GameCategory.BLACKJACK:
+            await BlackJackStrategy.start_game(callback.bot, game)
+        case GameCategory.BACCARAT:
+            await BaccaratStrategy.start_game(callback.bot, game)
+        case _:
+            msg = await callback.message.bot.send_message(
+                chat_id=callback.message.chat.id,
+                text=await UserPublicGameMessages.get_game_in_chat_start(game),
+                reply_markup=markup, parse_mode='HTML'
+            )
+            await games.update_message_id(game, msg.message_id)
 
 
 async def join_chat_game(callback: CallbackQuery, game: Game):

@@ -11,7 +11,7 @@ from src.keyboards.user.games import BlackJackKeyboards
 from src.misc import GameStatus
 from src.misc.callback_factories import BlackJackCallback
 from src.utils.cards import Card, get_random_card
-from src.utils.generate_card_images import BlackJackImagePainter
+from src.utils.card_images import BlackJackImagePainter
 from src.utils.game_messages_sender import GameMessageSender
 
 
@@ -41,17 +41,15 @@ async def deal_next_card_for_player_and_get_score(game_number: int, player_id: i
     )
 
 
-async def add_next_card_to_dealer_and_get_points(game_number: int) -> int:
+async def give_card_to_dealer_and_get_score(game_number: int) -> int:
     # Генерируем новую карту
     next_card = get_random_card()
 
     # Вычисляем очки, которые даст карта
-    dealer_cards = await playing_cards.get_dealer_cards(game_number=game_number)
     dealer_points = await playing_cards.count_dealer_score(game_number=game_number)
     next_card_points = get_card_points(next_card=next_card, current_player_score=dealer_points)
 
-    # Если у дилера больше 17 и более очков, он останавливается
-    if len(dealer_cards) > 2 and dealer_points and dealer_points + next_card_points > 16:
+    if dealer_points and dealer_points > 16:
         return dealer_points
 
     # Сохраняем карту
@@ -59,7 +57,7 @@ async def add_next_card_to_dealer_and_get_points(game_number: int) -> int:
         game_number=game_number, points=next_card_points,
         card_suit=next_card.suit, card_value=next_card.value
     )
-    return next_card_points
+    return dealer_points
 
 
 # endregion
@@ -72,16 +70,13 @@ class BlackJackStrategy(GameStrategy):
         await bot.send_chat_action(chat_id=player_id, action=ChatAction.UPLOAD_PHOTO)
         image_painter = BlackJackImagePainter(game)
         markup = BlackJackKeyboards.get_controls(game_number=game.number) if show_markup else None
-        print('начало создания картинки')
         photo = await image_painter.get_image()
-        print('конец создания картинки')
 
         result_photo_file_id = await bot.send_photo(
             chat_id=player_id,
             photo=photo,
             reply_markup=markup
         )
-        print('картинка отправлена')
         return result_photo_file_id.photo[0].file_id
 
     @staticmethod
@@ -117,31 +112,25 @@ class BlackJackStrategy(GameStrategy):
     @staticmethod
     async def calculate_winnings_and_losses(game: Game, dealer_points: int):
         players_scores = await game_scores.get_game_moves(game)
-        print(players_scores, players_scores[0].value, players_scores[1].value)
+
         for player_score in players_scores:
             # Если перебор очков, пропускаем игрока
             if player_score.value > 21:
-                print('перебор')
                 continue
 
-            # если ничья
             player_id = (await player_score.player.get()).telegram_id
-            print('очки игрока / очки дилера', player_score.value, dealer_points)
-            if player_score.value == dealer_points:
-                print('ничья с банкиром')
+            # обычный выигрыш
+            if player_score.value > dealer_points or dealer_points > 21:
+                await transactions.accrue_winnings(game=game, winner_telegram_id=player_id, amount=game.bet * 2)
+                continue
+            # если ничья
+            elif player_score.value == dealer_points:
                 await transactions.refund(players_telegram_ids=(player_id,), amount=game.bet, game=game)
                 continue
 
-            # обычный выигрыш
-            if player_score.value > dealer_points:
-                print('выигрыш игркоа')
-                await transactions.accrue_winnings(game=game, winner_telegram_id=player_id, amount=game.bet * 2)
-
             # блэк джек (чистая победа)
             player_cards = await playing_cards.get_player_cards(game_number=game.number, player_id=player_id)
-            print('проверка блэк джека', len(player_cards))
             if len(player_cards) == 2 and player_score.value == 21:
-                print('блэк джек')
                 await transactions.accrue_winnings(game=game, winner_telegram_id=player_id, amount=game.bet * 2.5)
                 continue
 
@@ -150,7 +139,7 @@ class BlackJackStrategy(GameStrategy):
         player_ids = sorted(await games.get_player_ids_of_game(game))
 
         # Выдаём две карты банкиру
-        [await add_next_card_to_dealer_and_get_points(game.number) for _ in range(2)]
+        [await give_card_to_dealer_and_get_score(game.number) for _ in range(2)]
 
         # выдаём карты игрокам
         for player_id in player_ids:
@@ -197,9 +186,9 @@ class BlackJackStrategy(GameStrategy):
         await games.finish_game(game)
 
         # Дилер набирает карты
-        dealer_points = 0
+        dealer_points = await playing_cards.count_dealer_score(game.number)
         while dealer_points < 17:
-            dealer_points += await add_next_card_to_dealer_and_get_points(game_number=game.number)
+            dealer_points = await give_card_to_dealer_and_get_score(game_number=game.number)
 
         # Начисляем выигрыши
         await BlackJackStrategy.calculate_winnings_and_losses(game=game, dealer_points=dealer_points)
@@ -224,12 +213,12 @@ class BlackJackStrategy(GameStrategy):
         points = await playing_cards.count_player_score(game_number, callback.from_user.id)
 
         # если меньше не проиграл, даём ещё ход
-        if points < 21:
+        if points < 40:
             await BlackJackStrategy.send_move_to_player(bot=callback.bot, game=game, player_id=callback.from_user.id)
             return
 
-        # выводим игрока из игры
-        await callback.message.answer(f'У вас {points} очков. Ожидайте результатов игры')
+        # выводим игрока из игры, так как перебор очков
+        await callback.message.answer(f'Ваш счёт: {points}. Ожидайте результатов игры')
         await BlackJackStrategy.finish_game_for_player_and_get_points(
             game_number=game_number, user_id=callback.from_user.id,
         )

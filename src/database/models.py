@@ -26,6 +26,7 @@ class Game(Model):
     number = fields.IntField(pk=True, generated=True)
     bet = fields.FloatField()
     max_players = fields.SmallIntField()
+    creator = fields.ForeignKeyField('models.User', related_name='games_creator')
     players = fields.ManyToManyField('models.User', related_name='games_participated')
     chat_id = fields.BigIntField(null=True)
     message_id = fields.BigIntField(null=True)
@@ -50,8 +51,8 @@ class PlayerScore(Model):
         table = "player_scores"
 
 
-class BlackjackPlayerCard(Model):
-    game = fields.ForeignKeyField('models.Game', related_name='blackjack_moves')
+class PlayingCard(Model):
+    game = fields.ForeignKeyField('models.Game', related_name='playing_cards')
     player_id = fields.BigIntField()
     points = fields.SmallIntField()
     suit = fields.CharField(max_length=6)
@@ -61,7 +62,7 @@ class BlackjackPlayerCard(Model):
         return f'Карта {self.value}{self.suit}, {self.points} очков'
 
     class Meta:
-        table = "blackjack_player_cards"
+        table = "playing_cards"
 
 
 class Referral(Model):

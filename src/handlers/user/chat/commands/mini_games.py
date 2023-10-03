@@ -2,12 +2,12 @@ import asyncio
 
 from aiogram import Router
 from aiogram.enums.dice_emoji import DiceEmoji
-from aiogram.filters.command import CommandObject
+from aiogram.filters.command import CommandObject, Command
 from aiogram.types import Message
 
 from src.database import games, transactions, Game
 from src.messages.user import UserPublicGameMessages
-from src.misc import GameCommands, GameType, GameCategory
+from src.misc import GameType, GameCategory
 from src.utils.game_validations import validate_create_game_start_cmd
 
 
@@ -80,5 +80,5 @@ async def handle_casino_command(message: Message, command: CommandObject):
 
 def register_mini_games_handlers(router: Router):
     # MiniGames
-    router.message.register(handle_cube_command, GameCommands.cube)
-    router.message.register(handle_casino_command, GameCommands.casino)
+    router.message.register(handle_cube_command, Command('cube'))
+    router.message.register(handle_casino_command, Command('casino'))

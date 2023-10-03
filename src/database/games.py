@@ -25,6 +25,7 @@ async def create_game(
         chat_id=chat_id,
         message_id=message_id,
         max_players=max_players,
+        creator=creator_user,
         category=game_category,
         game_type=game_type.value,
         status=status.value,
@@ -46,7 +47,7 @@ async def get_game_by_message_id(message_id: int):
 
 
 async def get_creator_of_game(game: Game) -> User:
-    return await game.players.all().first()
+    return await game.creator.get()
 
 
 async def get_players_of_game(game: Game) -> List[User]:

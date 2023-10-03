@@ -14,7 +14,6 @@ from src.handlers.user.bot.game_strategies import BlackJackStrategy, BaccaratStr
 async def add_user_to_bot_game(callback: CallbackQuery, game: Game):
     await callback.message.delete()
     await games.add_user_to_game(callback.from_user.id, game.number)
-    bot = callback.bot
 
     # если игра заполнилась, перенаправляем на начало нужной игры (в зависимости от категории)
     if await games.is_game_full(game):

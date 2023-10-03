@@ -14,12 +14,6 @@ async def get_game_moves(game: Game) -> list[PlayerScore]:
     return moves
 
 
-async def is_player_moved(game: Game, player_id: int):
-    move = await PlayerScore.get_or_none(game=game, player_id=player_id)
-    print(move)
-    return True if move else False
-
-
 async def is_all_players_moved(game: Game) -> bool:
     moves_count = await PlayerScore.filter(game=game).count()
     return moves_count == game.max_players

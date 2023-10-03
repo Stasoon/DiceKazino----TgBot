@@ -10,7 +10,7 @@ class GameStrategy(ABC):
 
     @staticmethod
     @abstractmethod
-    async def start_game(callback: CallbackQuery, game: Game):
+    async def start_game(bot: Bot, game: Game):
         ...
 
     @staticmethod
