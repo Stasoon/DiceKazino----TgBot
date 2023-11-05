@@ -2,9 +2,8 @@ from typing import Collection
 
 from aiogram import html
 
-from src.database import games, Game, PlayerScore, get_user_or_none, get_user_balance, get_users_with_top_winnings
-from src.utils.cards import Card
-from src.utils.texts import format_float_to_rub_string
+from src.database import games, users, Game, PlayerScore, get_top_winners_by_amount
+from src.utils.text_utils import format_float_to_rub_string
 from src.misc.enums import BaccaratBettingOption
 from src.misc import GameCategory
 from settings import Config
@@ -15,8 +14,10 @@ from settings import Config
 async def get_short_game_info_text(game: Game) -> str:
     """Возвращает строку с коротким описанием игры"""
     header = _get_game_header(game)
+    creator = await games.get_creator_of_game(game)
+
     return f'{header} \n' \
-           f'👤 Создал: {await games.get_creator_of_game(game)} \n' \
+           f'👤 Создал: {str(creator)} \n' \
            f'💰 Ставка: {format_float_to_rub_string(game.bet, use_html=False)} \n'
 
 
@@ -77,18 +78,15 @@ class BaccaratMessages:
         return text
 
 
-class BlackJackMessages:
+class EvenUnevenMessages:
     @staticmethod
-    def get_cards_text(cards: Collection[Card], player_points: int) -> str:
-        result = f'{html.bold(f"Ваш счёт: {player_points}")} \n\n'
-        result += '  •  '.join(f'{card.suit} {card.value}' for card in cards)
-        return result
+    def get_timer_template(round_number: int) -> str:
+        return f'🎲 Раунд #{round_number} \n' + \
+               '⏱ {} \n♻ Ожидание ставок...'
 
-    @staticmethod
-    def get_too_many_points(cards: Collection[Card], player_points: int) -> str:
-        result = BlackJackMessages.get_cards_text(cards, player_points)
-        result += ' \n\nПеребор очков! Вы проиграли.'
-        return result
+
+class BlackJackMessages:
+    pass
 
 
 class UserPrivateGameMessages:
@@ -107,9 +105,9 @@ class UserPrivateGameMessages:
         ]
 
         text = f"{html.bold('📊 Статистика')} \n\n"
-        medals = ['🥇', '🥈', '🥉']
+        medals = ('🥇', '🥈', '🥉')
         for period in time_periods:
-            top_winnings = await get_users_with_top_winnings(category, days_back=period['days_back'], limit=3)
+            top_winnings = await get_top_winners_by_amount(category, days_back=period['days_back'], limit=3)
             text += f"{html.bold(period['label'])} \n"
             for medal, user in zip(medals, top_winnings):
                 text += f"{medal} {user} [{format_float_to_rub_string(user.winnings_amount)}]\n"
@@ -124,7 +122,7 @@ class UserPrivateGameMessages:
     @staticmethod
     async def enter_bet_amount(user_id: int, game_type_name: str) -> str:
         """Просьба ввести ставку"""
-        balance = await get_user_balance(user_id)
+        balance = await users.get_user_balance(user_id)
 
         return f'➕ Создание игры в {game_type_name} \n\n' \
                f'— Минимальная сумма ставки: {format_float_to_rub_string(Config.Games.min_bet_amount)} \n' \
@@ -178,7 +176,7 @@ class UserPublicGameMessages:
         # Формируем сообщение о победителе и выигрыше
         if winner_id:
             winner_text = f'💰 Выигрыш: {format_float_to_rub_string(win_amount)}\n' \
-                          f'🏆 Победитель: {await get_user_or_none(telegram_id=winner_id)}'
+                          f'🏆 Победитель: {await users.get_user_or_none(telegram_id=winner_id)}'
         else:
             winner_text = '⚡⚡⚡ Ничья ⚡⚡⚡ \n♻ Возвращаю ставки'
 
@@ -188,14 +186,14 @@ class UserPublicGameMessages:
     # region MiniGames
     @staticmethod
     async def get_mini_game_victory(game: Game, win_amount: float):
-        creator = await games.get_creator_of_game(game)
-        return f'👤 {str(creator)} \n' \
+        # creator = await games.get_creator_of_game(game)
+        return f'👤 {str(game.creator)} \n' \
                f'🎉 Вы выиграли! \n' \
                f'➕ Сумма выигрыша: {format_float_to_rub_string(win_amount)}'
 
     @staticmethod
     async def get_mini_game_loose(game: Game) -> str:
-        creator = await games.get_creator_of_game(game)
-        return f'👤 {str(creator)} \n' \
+        # creator = await game.creator
+        return f'👤 {str(game.creator)} \n' \
                f'😞 Вы проиграли {format_float_to_rub_string(game.bet)} \n' \
                f'🍀 Возможно, в следующий раз повезёт'

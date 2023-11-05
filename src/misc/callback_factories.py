@@ -2,10 +2,14 @@ from typing import Optional, Literal
 
 from aiogram.filters.callback_data import CallbackData
 
-from .enums import TransactionType, PaymentMethod, GameType, GameCategory
+from .enums import PaymentMethod, GameType, GameCategory
 
 
 class BlackJackCallback(CallbackData, prefix='BJ'):
+    """
+    game_number: int \n
+    move: Literal['take', 'stand']
+    """
     game_number: int
     move: Literal['take', 'stand']
 
@@ -29,13 +33,13 @@ class NavigationCallback(CallbackData, prefix="nav"):
     branch: str
     option: Optional[str] = None
     """
-    branch: str  # play / profile / info
+    branch: str  # play / profile / info / ...
     option: Optional[str] = None
 
 
 class BalanceTransactionCallback(CallbackData, prefix='balance_transaction'):
     """Отвечает за выбор метода пополнения/депозита"""
-    transaction_type: TransactionType
+    transaction_type: Literal['deposit', 'withdraw']
     method: PaymentMethod
     currency: Optional[str] = None
 
@@ -47,21 +51,22 @@ class PaymentCheckCallback(CallbackData, prefix='check_payment'):
 
 
 class ConfirmWithdrawRequisitesCallback(CallbackData, prefix='confirm_withdraw_requisites'):
-    """Отвечает за подтверждение отправки запроса на вывод средств \n
-    Параметры: requisites_correct: bool"""
+    """
+    Отвечает за подтверждение отправки запроса на вывод средств \n
+    requisites_correct: bool
+    """
     requisites_correct: bool
 
 
 class AdminValidatePaymentCallback(CallbackData, prefix='confirm_payment'):
     """
     Отвечает за отклонение или подтверждение оплаты у админа \n
-    Параметры: \n
-    user_id - int \n
-    amount - float \n
-    transaction_type - TransactionType.DEPOSIT или TransactionType.WITHDRAW \n
-    confirm' - bool
+    user_id: int \n
+    amount: float \n
+    transaction_type: Literal['deposit', 'withdraw'] \n
+    confirm: bool
     """
     user_id: int
     amount: float
-    transaction_type: TransactionType
+    transaction_type: Literal['deposit', 'withdraw']
     confirm: bool

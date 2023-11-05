@@ -1,22 +1,22 @@
 from typing import List, Union
 
-from tortoise.exceptions import DoesNotExist
+from tortoise.exceptions import DoesNotExist, MultipleObjectsReturned
 from tortoise.expressions import Q
 
-from .models import Game, User
-from .users import get_user_or_none
+from ..models import Game, User
+from ..users import get_user_or_none
 from src.misc import GameStatus, GameCategory, GameType
 
 
 # Create
 async def create_game(
-        creator_telegram_id: int,
-        max_players: int,
-        game_category: GameCategory,
-        game_type: GameType,
-        bet: float,
-        chat_id: int,
-        message_id: int = None,
+    creator_telegram_id: int,
+    max_players: int,
+    game_category: GameCategory,
+    game_type: GameType,
+    bet: float,
+    chat_id: int,
+    message_id: int = None,
 ) -> Game:
     status = GameStatus.ACTIVE if max_players == 1 else GameStatus.WAIT_FOR_PLAYERS
     creator_user = await get_user_or_none(telegram_id=creator_telegram_id)
@@ -41,13 +41,17 @@ async def get_game_obj(game_number: int) -> Game:
     return game
 
 
-async def get_game_by_message_id(message_id: int):
+async def get_creator_of_game(game) -> User:
+    try:
+        creator = await game.creator.get()
+    except MultipleObjectsReturned:
+        creator = game.creator
+    return creator
+
+
+async def get_game_by_message_id(message_id: int) -> Game:
     game = await Game.get_or_none(message_id=message_id)
     return game
-
-
-async def get_creator_of_game(game: Game) -> User:
-    return await game.creator.get()
 
 
 async def get_players_of_game(game: Game) -> List[User]:
@@ -57,11 +61,6 @@ async def get_players_of_game(game: Game) -> List[User]:
 async def get_player_ids_of_game(game: Game) -> List[int]:
     """Возвращает список с telegram id игроков"""
     return await game.players.all().values_list('telegram_id', flat=True)
-
-
-async def get_total_games_count() -> int:
-    """Возвращает число с количеством игр в БД за всё время"""
-    return await Game.all().count()
 
 
 async def is_game_full(game: Game) -> bool:
@@ -84,23 +83,17 @@ async def get_bot_available_games(game_category: GameCategory) -> List[Game]:
     return await Game.filter(status=GameStatus.WAIT_FOR_PLAYERS, category=game_category, chat_id__gt=0)
 
 
-# async def get_user_participated_games(telegram_id: int) -> List[Game]:
-#     """Возвращает список всех игр, в которых был задействован юзер"""
-#     try:
-#         user = await User.get(telegram_id=telegram_id)
-#         participated_games = await user.games_participated.all()
-#         return participated_games
-#     except DoesNotExist:
-#         return []
-
-
 async def get_user_unfinished_game(telegram_id: int) -> Game | None:
     """Возвращает незаконченную игру юзера (если статус - ACTIVE или WAIT_FOR_PLAYERS)"""
     user = await User.get_or_none(telegram_id=telegram_id)
+
+    if not user:
+        return
+
     await user.fetch_related('games_participated')
     game = await user.games_participated.filter(
         (Q(status=GameStatus.ACTIVE) | Q(status=GameStatus.WAIT_FOR_PLAYERS)) & Q(players=user)
-    ).all().first()
+    ).first()
 
     return game if game else None
 
@@ -116,7 +109,19 @@ async def get_user_active_game(telegram_id: int) -> Game | None:
     return game if game else None
 
 
+async def get_total_games_count() -> int:
+    """Возвращает число с количеством игр в БД за всё время"""
+    return await Game.all().count()
+
+
 # Update
+
+async def add_user_to_game(telegram_id: int, game_number: int) -> None:
+    user = await User.get(telegram_id=telegram_id)
+    game = await Game.get(number=game_number)
+
+    await game.players.add(user)
+
 
 async def update_message_id(game: Game, new_message_id: int):
     """Обновить id стартового сообщения игры"""
@@ -137,10 +142,3 @@ async def cancel_game(game: Game):
 async def activate_game(game: Game):
     game.status = GameStatus.ACTIVE
     await game.save()
-
-
-async def add_user_to_game(telegram_id: int, game_number: int) -> None:
-    user = await User.get(telegram_id=telegram_id)
-    game = await Game.get(number=game_number)
-
-    await game.players.add(user)

@@ -5,25 +5,30 @@ from typing import Generator, Any
 
 @dataclass
 class Card:
-    """Параметры:
+    """
+    Параметры:
     value: str
-    suit: str"""
+    suit: str
+    """
     value: str
     suit: str
 
     @staticmethod
     def get_existing_suits() -> tuple:
+        """ Возвращает возможные масти карт """
         return "Ч", "Б", "П", "К"
 
     @staticmethod
     def get_existing_values() -> tuple:
+        """ Возвращает возможные значения карт """
         return *[str(i) for i in range(2, 10 + 1)], "В", "Д", "К", "Т"
 
 
 def get_shuffled_deck(decks_count: int = 1) -> Generator[Card, Any, Any]:
-    """Возвращает генератор (колоду) с объектами Card.  \n
+    """
+    Возвращает генератор (колоду) с объектами Card.  \n
     decks_count - сколько колод использовать \n
-    emoji_values - использовать эмодзи вместо цифр и букв"""
+    """
     deck = [
         Card(value, suit)
         for value in Card.get_existing_values()

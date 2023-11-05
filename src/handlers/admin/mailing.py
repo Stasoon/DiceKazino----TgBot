@@ -8,7 +8,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardMarkup
 
 from src.database.users import get_all_user_ids
-from src.keyboards.admin import AdminKeyboards
+from src.keyboards.admin.mailing_kbs import MailingKb
 from src.misc import AdminStates
 from src.utils import logger
 
@@ -90,7 +90,7 @@ class Mailer:
 
 async def handle_admin_mailing_button(message: Message, state: FSMContext):
     await message.answer(text=Messages.ask_for_post_content(),
-                         reply_markup=AdminKeyboards.mailing.get_cancel_markup(),
+                         reply_markup=MailingKb.get_cancel_markup(),
                          parse_mode='HTML')
     await state.set_state(AdminStates.MailingPostCreating.wait_for_content_message)
 
@@ -99,7 +99,7 @@ async def handle_post_content(message: Message, state: FSMContext):
     await state.update_data(message_id=message.message_id)
 
     await message.answer(text=Messages.get_markup_adding_manual(),
-                         reply_markup=AdminKeyboards.mailing.get_skip_adding_button_to_post(),
+                         reply_markup=MailingKb.get_skip_adding_button_to_post(),
                          disable_web_page_preview=True,
                          parse_mode='HTML')
 
@@ -107,7 +107,7 @@ async def handle_post_content(message: Message, state: FSMContext):
 
 
 async def handle_url_button_data(message: Message, state: FSMContext):
-    markup = AdminKeyboards.mailing.generate_markup_from_text(message.text)
+    markup = MailingKb.generate_markup_from_text(message.text)
 
     await message.answer(Messages.prepare_post(), parse_mode='HTML')
 
@@ -119,12 +119,12 @@ async def handle_url_button_data(message: Message, state: FSMContext):
     except Exception as e:
         print(e)
         await message.answer(text='Вы ввели неправильную информацию для кнопок под постом. Попробуйте снова:',
-                             reply_markup=AdminKeyboards.mailing.get_skip_adding_button_to_post())
+                             reply_markup=MailingKb.get_skip_adding_button_to_post())
         return
 
     await state.update_data(markup=markup)
     await message.answer(Messages.ask_about_start_mailing(),
-                         reply_markup=AdminKeyboards.mailing.get_confirm_mailing(),
+                         reply_markup=MailingKb.get_confirm_mailing(),
                          parse_mode='HTML')
     await state.set_state(AdminStates.MailingPostCreating.wait_for_confirm)
 
@@ -139,7 +139,7 @@ async def handle_continue_wout_button_callback(callback: CallbackQuery, state: F
     )
     # просим подтверждения
     await callback.message.answer(Messages.ask_about_start_mailing(),
-                                  reply_markup=AdminKeyboards.mailing.get_confirm_mailing(),
+                                  reply_markup=MailingKb.get_confirm_mailing(),
                                   parse_mode='HTML')
     await state.set_state(AdminStates.MailingPostCreating.wait_for_confirm)
 
@@ -169,7 +169,7 @@ async def handle_cancel_mailing_callback(callback: CallbackQuery, state: FSMCont
 def register_mailing_handlers(router: Router):
     # обработка нажатия на кнопку Рассылки из меню админа
     router.message.register(handle_admin_mailing_button, F.text.contains(
-        AdminKeyboards.mailing.get_button_for_admin_menu().text))
+        MailingKb.get_button_for_admin_menu().text))
 
     # обработка контента поста
     router.message.register(handle_post_content, F.content_type.in_({'text', 'video', 'photo', 'animation'}),

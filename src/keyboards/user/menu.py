@@ -1,3 +1,4 @@
+from aiogram.types import WebAppInfo
 from aiogram.utils.keyboard import (InlineKeyboardMarkup, InlineKeyboardButton, KeyboardButton,
                                     ReplyKeyboardMarkup, InlineKeyboardBuilder)
 
@@ -12,11 +13,22 @@ class UserMenuKeyboards:
     def get_main_menu() -> ReplyKeyboardMarkup:
         menu_kb = ReplyKeyboardMarkup(keyboard=[
             [KeyboardButton(text="🎰  Играть  🎰")],
-            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="💵 Кошелёк")],
-            [KeyboardButton(text="🔝 Топ игроков"), KeyboardButton(text="ℹ Информация")],
+            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="🔝 Топ игроков")],
+            [KeyboardButton(text="📰 События"), KeyboardButton(text="ℹ Информация")],
             ],
             resize_keyboard=True)
         return menu_kb
+
+    # Events
+    @staticmethod
+    def get_events():
+        builder = InlineKeyboardBuilder()
+
+        builder.button(text='📆 История и планы 📆', web_app=WebAppInfo(url='https://mj6290.craftum.io/spotdiceroadmap'))
+        builder.button(text='⚽ Турнир "Бутс"', url='https://t.me/SpotDiceN/24')
+        builder.button(text='🎴 Турнир "Козырь"', url='https://t.me/SpotDiceN/24')
+
+        return builder.adjust(1).as_markup()
 
     # branch PROFILE
     @staticmethod

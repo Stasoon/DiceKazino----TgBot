@@ -1,4 +1,4 @@
-from src.utils.texts import format_float_to_rub_string
+from src.utils.text_utils import format_float_to_rub_string
 from src.database import Game
 from .games import _get_game_header
 

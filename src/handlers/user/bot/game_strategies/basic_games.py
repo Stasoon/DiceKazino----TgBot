@@ -1,10 +1,11 @@
 import asyncio
 
 from aiogram import Router, F, Bot
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import Message
 
-from src.database import games, Game, game_scores, transactions
-from src.handlers.user.game_strategy import GameStrategy
+from src.database import games, Game, transactions
+from src.database.games import game_scores
+from src.handlers.user.bot.game_strategies.game_strategy import GameStrategy
 from src.keyboards import UserMenuKeyboards, UserPrivateGameKeyboards
 from src.messages import UserPublicGameMessages
 from src.utils.game_messages_sender import GameMessageSender
@@ -13,10 +14,10 @@ from src.utils.game_messages_sender import GameMessageSender
 class BasicGameStrategy(GameStrategy):
 
     @staticmethod
-    async def start_game(callback: CallbackQuery, game: Game):
+    async def start_game(bot: Bot, game: Game):
         text = 'Нажмите на клавиатуру, чтобы походить'
         markup = UserPrivateGameKeyboards.get_dice_kb(game.game_type.value)
-        await GameMessageSender(callback.bot, game).send(text, markup=markup)
+        await GameMessageSender(bot, game).send(text, markup=markup)
 
     @staticmethod
     async def finish_game(bot: Bot, game: Game):
@@ -32,12 +33,15 @@ class BasicGameStrategy(GameStrategy):
             # Возвращаем деньги участникам
             for move in game_moves:
                 player = await move.player.get()
-                await transactions.refund(game=game, players_telegram_ids=(player.telegram_id,), amount=game.bet)
+                await transactions.make_bet_refund(game=game, player_id=player.telegram_id, amount=game.bet)
         else:  # значения разные
             # Получаем победителя
             winner_id = (await max_move.player.get()).telegram_id
             # Начисляем выигрыш на баланс
-            await transactions.accrue_winnings(game, winner_id, game.bet * win_coefficient)
+            await transactions.accrue_winnings(
+                game=game, winner_telegram_id=winner_id,
+                amount=game.bet * win_coefficient
+            )
 
         seconds_to_wait = 3
         await asyncio.sleep(seconds_to_wait)

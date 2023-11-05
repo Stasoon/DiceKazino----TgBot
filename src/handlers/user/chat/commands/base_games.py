@@ -6,7 +6,7 @@ from src.database import games, transactions
 from src.keyboards import UserPublicGameKeyboards
 from src.messages import UserPublicGameMessages
 from src.misc import GameType, GameCategory
-from src.utils.game_validations import validate_create_game_start_cmd
+from src.utils.game_validations import validate_create_game_cmd
 
 
 async def create_game_and_send(message: Message, command: CommandObject, game_type: GameType, users_count: int):
@@ -20,7 +20,7 @@ async def create_game_and_send(message: Message, command: CommandObject, game_ty
         game_category=GameCategory.BASIC,
         bet=bet)
 
-    await transactions.debit_bet(game=game, user_telegram_id=message.from_user.id, amount=bet)
+    await transactions.deduct_bet_from_user_balance(game=game, user_telegram_id=message.from_user.id, amount=bet)
 
     game_start_message = await message.answer(
         text=await UserPublicGameMessages.get_game_in_chat_created(game, message.chat.username),
@@ -43,16 +43,15 @@ game_type_map = {
 }
 
 
-@validate_create_game_start_cmd(args_count=1)
+@validate_create_game_cmd(args_count=1)
 async def handle_games_for_two_players_commands(message: Message, command: CommandObject):
     await create_game_and_send(message, command, game_type=game_type_map.get(command.command), users_count=2)
 
 
-@validate_create_game_start_cmd(args_count=1)
+@validate_create_game_cmd(args_count=1)
 async def handle_games_for_three_players_commands(message: Message, command: CommandObject):
     # отсекаем последний символ, отвечающий за количество игры
     game_type = game_type_map.get(command.command[:-1])
-    print(game_type, command.command[:-1])
     await create_game_and_send(message, command, game_type=game_type, users_count=3)
 
 

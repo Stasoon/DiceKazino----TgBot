@@ -68,17 +68,17 @@ async def handle_delete_game_command(message: Message):
         await message.answer(text=GameErrors.get_game_is_finished(), parse_mode='HTML')
         return
 
-    # minutes_while_cant_delete_game = 30
-    # time_difference = datetime.now().astimezone(game.start_time.tzinfo) - game.start_time
-    # # не прошло N минут
-    # if time_difference < timedelta(minutes=minutes_while_cant_delete_game):
-    #     await message.answer(text=GameErrors.get_delete_game_time_limit(), parse_mode='HTML')
-    # игра начата
+    minutes_while_cant_delete_game = 30
+    time_difference = datetime.now().astimezone(game.start_time.tzinfo) - game.start_time
+    # не является создателем
+    if message.from_user.id != (await game.creator.get()).telegram_id:
+        await message.answer(text=GameErrors.get_not_creator_of_game(), parse_mode='HTML')
+    # # игра начата
     # elif game.status != GameStatus.WAIT_FOR_PLAYERS:
     #     await message.answer(text=GameErrors.get_cannot_delete_game_message_after_start(), parse_mode='HTML')
-    # не является создателем
-    elif message.from_user.id != (await games.get_creator_of_game(game)).telegram_id:
-        await message.answer(text=GameErrors.get_not_creator_of_game(), parse_mode='HTML')
+    # # не прошло N минут
+    # elif time_difference < timedelta(minutes=minutes_while_cant_delete_game):
+    #     await message.answer(text=GameErrors.get_delete_game_time_limit(), parse_mode='HTML')
     # если всё хорошо, удаляем игру
     else:
         try:
@@ -86,7 +86,9 @@ async def handle_delete_game_command(message: Message):
         except TelegramBadRequest:
             pass
         await games.cancel_game(game)
-        await transactions.refund(await games.get_player_ids_of_game(game), amount=game.bet, game=game)
+
+        for player_id in await games.get_player_ids_of_game(game):
+            await transactions.make_bet_refund(player_id=player_id, amount=game.bet, game=game)
 
 
 def register_other_commands_handlers(router: Router):

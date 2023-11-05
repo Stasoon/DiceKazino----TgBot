@@ -7,7 +7,7 @@ from src.database import transactions
 from src.keyboards.user import UserPaymentKeyboards, UserMenuKeyboards
 from src.messages import UserPaymentMessages, BalanceErrors, InputErrors, PaymentErrors
 from src.misc import (NavigationCallback, BalanceTransactionCallback, UserStates,
-                      PaymentCheckCallback, PaymentMethod, TransactionType)
+                      PaymentCheckCallback, PaymentMethod)
 from src.utils import cryptobot, post_payment, logger
 
 
@@ -66,7 +66,7 @@ async def handle_deposit_callback(callback: CallbackQuery):
     """Показывает сообщение с методами пополнения"""
     await callback.message.edit_text(
         text=UserPaymentMessages.get_choose_deposit_method(),
-        reply_markup=UserPaymentKeyboards.get_payment_methods(transaction_type=TransactionType.DEPOSIT),
+        reply_markup=UserPaymentKeyboards.get_payment_methods(transaction_type='deposit'),
         parse_mode='HTML'
     )
 
@@ -80,7 +80,7 @@ async def handle_show_deposit_method_callbacks(callback: CallbackQuery, callback
     if callback_data.method == PaymentMethod.CRYPTO_BOT:
         await callback.message.edit_text(
             text=UserPaymentMessages.choose_currency(),
-            reply_markup=await UserPaymentKeyboards.get_cryptobot_choose_currency(callback_data.transaction_type),
+            reply_markup=await UserPaymentKeyboards.get_crypto_bot_choose_currency(callback_data.transaction_type),
             parse_mode='HTML'
         )
     # если метод вывода - полуавтоматический
@@ -123,7 +123,7 @@ async def handle_halfauto_deposit_screen_message(message: Message, state: FSMCon
             user_name=message.from_user.full_name,
             amount=data.get('amount'),
             photo_file_id=message.photo[0].file_id,
-            transaction_type=TransactionType.DEPOSIT,
+            transaction_type='deposit',
             method=data.get('method')
         )
     except Exception as e:
@@ -196,12 +196,12 @@ def register_deposit_handlers(router: Router):
 
     # нажатие на метод пополнения
     router.callback_query.register(handle_show_deposit_method_callbacks, BalanceTransactionCallback.filter(
-        (F.transaction_type == TransactionType.DEPOSIT) & ~F.currency))
+        (F.transaction_type == 'deposit') & ~F.currency))
 
     # Оплата КриптоБотом
     # нажатие на кнопку валюты
     router.callback_query.register(handle_cryptobot_deposit_currency_callback, BalanceTransactionCallback.filter(
-        (F.transaction_type == TransactionType.DEPOSIT) & (F.method == PaymentMethod.CRYPTO_BOT) & F.currency
+        (F.transaction_type == 'deposit') & (F.method == PaymentMethod.CRYPTO_BOT) & F.currency
     ))
     # сообщение с суммой депозита для автоплатежа
     router.message.register(handle_auto_deposit_amount_message, UserStates.AutoDeposit.wait_for_amount)

@@ -8,7 +8,7 @@ from aiogram.types import Message
 from src.database import games, transactions, Game
 from src.messages.user import UserPublicGameMessages
 from src.misc import GameType, GameCategory
-from src.utils.game_validations import validate_create_game_start_cmd
+from src.utils.game_validations import validate_create_game_cmd
 
 
 # region Utils
@@ -23,7 +23,7 @@ async def start_mini_game(game_start_msg: Message, game_start_cmd: CommandObject
         chat_id=game_start_msg.chat.id, message_id=game_start_msg.message_id,
         game_type=game_type, game_category=GameCategory.BASIC)
     # списываем сумму ставки
-    await transactions.debit_bet(game=game, user_telegram_id=user_id, amount=bet)
+    await transactions.deduct_bet_from_user_balance(game=game, user_telegram_id=user_id, amount=bet)
     return game
 
 
@@ -45,7 +45,7 @@ async def process_mini_game_result(user_message: Message, game: Game, win_coeffi
 
 # region MiniGames
 
-@validate_create_game_start_cmd(args_count=2)
+@validate_create_game_cmd(args_count=2)
 async def handle_cube_command(message: Message, command: CommandObject):
     game = await start_mini_game(message, command, GameType.DICE)
 
@@ -58,7 +58,7 @@ async def handle_cube_command(message: Message, command: CommandObject):
     await process_mini_game_result(message, game, win_coefficient)
 
 
-@validate_create_game_start_cmd(args_count=1, min_bet=10)
+@validate_create_game_cmd(args_count=1, min_bet=10)
 async def handle_casino_command(message: Message, command: CommandObject):
     game = await start_mini_game(message, command, GameType.CASINO)
 

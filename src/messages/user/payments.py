@@ -1,6 +1,6 @@
 from aiogram import html
 
-from src.utils.texts import format_float_to_rub_string
+from src.utils.text_utils import format_float_to_rub_string
 from src.misc import PaymentMethod
 
 

@@ -6,39 +6,12 @@ from aiogram.types import CallbackQuery, Message
 from src.database import users, games, transactions
 from src.handlers.user.chat.chat import send_game_created_in_bot_notification
 from src.keyboards.user import UserPrivateGameKeyboards, UserMenuKeyboards
-from src.messages.user import UserMenuMessages, UserPrivateGameMessages, get_full_game_info_text, \
-    GameErrors, BalanceErrors, InputErrors
-from src.misc import NavigationCallback, GamesCallback, GameCategory, GameType, UserStates, GameStatus
-from settings import Config
+from src.messages.user import UserMenuMessages, UserPrivateGameMessages, get_full_game_info_text, GameErrors
+from src.misc import NavigationCallback, GamesCallback, GameCategory, GameType, UserStates
+from src.utils.game_validations import validate_and_extract_bet_amount
 
 
 # region Utils
-
-
-async def validate_and_get_deposit_amount(amount_message: Message) -> float | None:
-    """Делает проверку суммы депозита, написанной в сообщении.
-    При некорректно введённых данных, отправляет сообщение и возвращает None.
-    Если всё хорошо, возвращает float из сообщения"""
-    try:
-        bet_amount = float(amount_message.text.replace(',', '.'))
-    except (ValueError, TypeError):
-        await amount_message.answer(InputErrors.get_message_not_number_retry(), parse_mode='HTML')
-        return None
-
-    min_bet_amount = Config.Games.min_bet_amount
-
-    if await users.get_user_balance(amount_message.from_user.id) < bet_amount:
-        await amount_message.answer(text=BalanceErrors.get_low_balance())
-        return None
-
-    if bet_amount < min_bet_amount:
-        await amount_message.answer(
-            text=BalanceErrors.get_insufficient_transaction_amount(min_bet_amount),
-            parse_mode='HTML'
-        )
-        return None
-
-    return bet_amount
 
 
 async def get_play_message_data(user_id: int) -> dict:
@@ -82,7 +55,9 @@ async def handle_game_category_callback(callback: CallbackQuery, callback_data: 
     available_games = await games.get_bot_available_games(callback_data.game_category)
     await callback.message.edit_text(
         text=UserPrivateGameMessages.get_game_category(category=callback_data.game_category),
-        reply_markup=await UserPrivateGameKeyboards.get_game_category(available_games, category=callback_data.game_category)
+        reply_markup=await UserPrivateGameKeyboards.get_game_category(
+            available_games, category=callback_data.game_category
+        )
     )
 
 
@@ -141,7 +116,7 @@ async def handle_basic_game_type_callback(callback: CallbackQuery, callback_data
 
 async def handle_bet_amount_message(message: Message, state: FSMContext):
     """Обработка сообщения с суммой ставки"""
-    bet_amount = await validate_and_get_deposit_amount(message)
+    bet_amount = await validate_and_extract_bet_amount(message)
     data = await state.get_data()
 
     if not bet_amount:
@@ -154,7 +129,9 @@ async def handle_bet_amount_message(message: Message, state: FSMContext):
         creator_telegram_id=message.from_user.id, max_players=2, bet=bet_amount
     )
     # списываем деньги
-    await transactions.debit_bet(created_game, message.from_user.id, bet_amount)
+    await transactions.deduct_bet_from_user_balance(
+        game=created_game, user_telegram_id=message.from_user.id, amount=bet_amount
+    )
     # отвечаем, что игра создана
     await message.answer(
         text=UserPrivateGameMessages.get_game_created(created_game),

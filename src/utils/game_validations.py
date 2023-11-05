@@ -4,12 +4,18 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import CommandObject
 from aiogram.types import Message, CallbackQuery
 
+from settings import Config
 from src.database import games, users, Game
 from src.messages import InputErrors, BalanceErrors, GameErrors
 from src.misc import GameStatus
 
 
-def validate_create_game_start_cmd(args_count: int = 1, min_bet: int = 30):
+def validate_create_game_cmd(args_count: int = 1, min_bet: int = 30):
+    """
+    Декоратор, который проверяет, что игрок может выполнить команду создания игры.
+    Проверки: баланса, аргументов команды, наличия другой активной игры.
+    Если игрок не может создать игру, ваша функция не выполнится, а игроку отправится причина ошибки.
+    """
     def decorator(func):
         @wraps(func)
         async def wrapper(message: Message, command: CommandObject, *args, **kwargs):
@@ -54,6 +60,32 @@ def validate_create_game_start_cmd(args_count: int = 1, min_bet: int = 30):
     return decorator
 
 
+async def validate_and_extract_bet_amount(amount_message: Message) -> float | None:
+    """Делает проверку ставки, написанной в сообщении, содержащем только число.
+    При некорректно введённых данных / недостатке баланса, отправляет сообщение и возвращает None.
+    Если всё хорошо, возвращает float из сообщения"""
+    try:
+        bet_amount = float(amount_message.text.replace(',', '.'))
+    except (ValueError, TypeError):
+        await amount_message.answer(InputErrors.get_message_not_number_retry(), parse_mode='HTML')
+        return None
+
+    min_bet_amount = Config.Games.min_bet_amount
+
+    if await users.get_user_balance(amount_message.from_user.id) < bet_amount:
+        await amount_message.answer(text=BalanceErrors.get_low_balance())
+        return None
+
+    if bet_amount < min_bet_amount:
+        await amount_message.answer(
+            text=BalanceErrors.get_insufficient_transaction_amount(min_bet_amount),
+            parse_mode='HTML'
+        )
+        return None
+
+    return bet_amount
+
+
 async def validate_join_game_request(callback: CallbackQuery, game: Game) -> bool:
     """Проверяет, что игрок может присоединиться к игре. Если нет, отправляет сообщение и возвращает False \n
     Проверки: баланс для ставки, участие в этой / другой игре, есть ли места"""
@@ -81,4 +113,5 @@ async def validate_join_game_request(callback: CallbackQuery, game: Game) -> boo
     elif await games.is_game_full(game) or game.status == GameStatus.ACTIVE:
         await callback.answer(text=GameErrors.get_game_is_full(), show_alert=True)
         return False
+    await callback.answer('✅ Вы присоединились к игре')
     return True

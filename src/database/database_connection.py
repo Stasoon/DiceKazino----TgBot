@@ -1,12 +1,11 @@
 from tortoise import Tortoise
 
-from settings import Config
 from src.utils.logging import logger
 
 
-async def start_database():
+async def start_database(db_url: str):
     await Tortoise.init(
-        db_url=Config.Database.DB_URL,
+        db_url=db_url,
         modules={"models": ["src.database.models"]},
     )
 

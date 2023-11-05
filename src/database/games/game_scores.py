@@ -1,6 +1,6 @@
 from tortoise.exceptions import DoesNotExist
 
-from .models import PlayerScore, Game
+from ..models import PlayerScore, Game
 
 
 # Create

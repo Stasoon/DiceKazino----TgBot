@@ -6,10 +6,10 @@ from settings import Config
 from src.database import users
 from src.keyboards.user import UserMenuKeyboards, UserPaymentKeyboards
 from src.messages import UserPaymentMessages, InputErrors, BalanceErrors
-from src.misc import (NavigationCallback, BalanceTransactionCallback, UserStates, PaymentMethod, TransactionType,
+from src.misc import (NavigationCallback, BalanceTransactionCallback, UserStates, PaymentMethod,
                       ConfirmWithdrawRequisitesCallback)
 from src.utils import post_payment
-from src.database.transactions import withdraw
+from src.database.transactions import withdraw_balance
 
 
 # region Utils
@@ -50,7 +50,7 @@ async def handle_withdraw_callback(callback: CallbackQuery):
 
     await callback.message.edit_text(
         text=UserPaymentMessages.get_choose_withdraw_method(),
-        reply_markup=UserPaymentKeyboards.get_payment_methods(transaction_type=TransactionType.WITHDRAW),
+        reply_markup=UserPaymentKeyboards.get_payment_methods(transaction_type='withdraw'),
         parse_mode='HTML')
 
 
@@ -62,7 +62,7 @@ async def handle_show_withdraw_method_callbacks(callback: CallbackQuery, callbac
     if callback_data.method == PaymentMethod.CRYPTO_BOT:
         await callback.message.edit_text(
             text=UserPaymentMessages.choose_currency(),
-            reply_markup=await UserPaymentKeyboards.get_cryptobot_choose_currency(callback_data.transaction_type),
+            reply_markup=await UserPaymentKeyboards.get_crypto_bot_choose_currency(callback_data.transaction_type),
             parse_mode='HTML'
         )
     # если метод вывода полуавтоматический
@@ -114,14 +114,15 @@ async def handle_confirm_withdraw_callback(callback: CallbackQuery, callback_dat
             UserPaymentMessages.enter_user_withdraw_requisites(data.get('method')), parse_mode='HTML')
         await state.set_state(UserStates.HalfAutoWithdraw.wait_for_requisites)
         return
+
     # иначе делаем списание и пост в канал с чеками
-    await withdraw(user_id=callback.from_user.id, amount=data.get('amount'))
+    await withdraw_balance(user_id=callback.from_user.id, amount=data.get('amount'))
 
     await post_payment.send_payment_request_to_admin(
         bot=callback.bot,
         user_id=callback.from_user.id, user_name=callback.from_user.full_name,
         amount=data.get('amount'),
-        transaction_type=TransactionType.WITHDRAW,
+        transaction_type='withdraw',
         method=data.get('method'),
         requisites=data.get('requisites')
     )
@@ -139,7 +140,7 @@ def register_withdraw_handlers(router: Router):
         (F.branch == 'profile') & (F.option == 'withdraw')))
 
     router.callback_query.register(handle_show_withdraw_method_callbacks, BalanceTransactionCallback.filter(
-        (F.transaction_type == TransactionType.WITHDRAW) & ~F.currency))
+        (F.transaction_type == 'withdraw') & ~F.currency))
 
     router.message.register(handle_withdraw_amount_message, UserStates.HalfAutoWithdraw.wait_for_amount)
 

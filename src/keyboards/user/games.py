@@ -1,3 +1,4 @@
+from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.enums.dice_emoji import DiceEmoji
 
@@ -14,6 +15,28 @@ class BaccaratKeyboards:
             [KeyboardButton(text='🤝 Ничья')],
             [KeyboardButton(text='🏦 Банкир')],
         ])
+
+
+class EvenUnevenKeyboards:
+    @staticmethod
+    def get_cancel_bet_entering() -> InlineKeyboardMarkup:
+        cancel_button = InlineKeyboardButton(text='Отменить', callback_data='cancel_even_uneven_bet')
+        return InlineKeyboardMarkup(inline_keyboard=[[cancel_button]])
+
+    @staticmethod
+    def get_bet_options(round_number: int, bot_username: str) -> InlineKeyboardMarkup:
+        builder = InlineKeyboardBuilder()
+        url = f'https://t.me/{bot_username}?start=EuN_{round_number}_'+'{move}'
+        builder.button(text='Чётное число (X1.5)', url=url.format(move='A'))
+        builder.button(text='Нечётное число (X1.5)', url=url.format(move='B'))
+        builder.button(text='1 > 2 (X1.5)', url=url.format(move='C'))
+        builder.button(text='2 > 1 (X1.5)', url=url.format(move='D'))
+        builder.button(text='Оба чётные (X2.5)', url=url.format(move='E'))
+        builder.button(text='Оба нечётные (X2.5)', url=url.format(move='F'))
+        builder.button(text='Число 5 (X2.5)', url=url.format(move='G'))
+        builder.button(text='Одинаковое значение костей (X5)', url=url.format(move='H'))
+        builder.adjust(2, 2, 2, 1, 1)
+        return builder.as_markup()
 
 
 class BlackJackKeyboards:
@@ -46,6 +69,7 @@ class UserPrivateGameKeyboards:
         builder.button(text='🎴 Baccarat', callback_data=GamesCallback(action='show',
                                                                       game_category=GameCategory.BACCARAT,
                                                                       game_type=GameType.BACCARAT))
+        builder.button(text='EvenUneven', url='https://t.me/+xpSCBf7Tbss3ZDVi')
         builder.adjust(1)
         return builder.as_markup()
 
@@ -59,7 +83,7 @@ class UserPrivateGameKeyboards:
         builder.button(text='📊 Статистика', callback_data=GamesCallback(action='stats', game_category=category))
 
         for game in available_games[:10]:
-            text = f'{game.game_type.value}#{game.number} | 💰{game.bet} | {(await games.get_creator_of_game(game)).name}'
+            text = f'{game.game_type.value}#{game.number} | 💰{game.bet} | {(await game.creator.first()).name}'
             builder.button(
                 text=text,
                 callback_data=GamesCallback(action='show', game_category=category, game_number=game.number)

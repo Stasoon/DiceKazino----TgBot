@@ -4,7 +4,8 @@ from PIL import Image, ImageDraw, ImageFont
 from PIL.Image import BICUBIC, HAMMING
 from aiogram.types import BufferedInputFile
 
-from src.database import Game, game_scores, playing_cards
+from src.database import Game
+from ...database.games import playing_cards, game_scores
 from .base_painter import _GameImagePainter
 
 
@@ -44,7 +45,7 @@ class BaccaratImagePainter(_GameImagePainter):
 
     async def __draw_player_cards_and_points(self, start_y_pos: int):
         start_x_left = 50
-        player_points = await playing_cards.count_player_score(game_number=self.game.number, player_id=1)
+        player_points = await playing_cards.count_player_score(game_number=self.game.number, player_id=1) % 10
         text = f"ИГРОК\n{player_points}"
 
         # рисуем текст с очками игрока
@@ -70,7 +71,7 @@ class BaccaratImagePainter(_GameImagePainter):
         start_x_right = self.table_size[0] - self.card_size[0] - 50
 
         # Рисуем очки дилера
-        banker_points = await playing_cards.count_dealer_score(game_number=self.game.number)
+        banker_points = await playing_cards.count_dealer_score(game_number=self.game.number) % 10
         self.draw.text(
             xy=(start_x_right - 20, (self.table_size[1] - self.card_size[1]) // 2 + 100 + 300),
             text=f"БАНКИР\n{banker_points}",

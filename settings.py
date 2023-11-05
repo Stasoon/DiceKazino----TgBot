@@ -23,7 +23,8 @@ class Config:
         min_deposit_amount: Final[float] = float(10)
 
     class Games:
-        GAME_CHAT_ID: Final[int] = str(os.getenv('GAME_CHAT_ID'))
+        GAME_CHAT_ID: Final = int(os.getenv('GAME_CHAT_ID'))
+        EVEN_UNEVEN_CHAT_ID: Final = int(os.getenv('EVEN_UNEVEN_CHAT_ID'))
         CARD_IMAGES_PATH: str = 'cards'
         min_bet_amount: Final[float] = float(30)
 

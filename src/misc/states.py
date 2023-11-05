@@ -9,11 +9,11 @@ class AdminStates:
 
 
 class UserStates:
-    class PrivateGamesCallback(StatesGroup):
-        wait_for_move = State()
-
     class EnterBet(StatesGroup):
         wait_for_bet_amount = State()
+
+    class EnterEvenUnevenBet(StatesGroup):
+        wait_for_bet = State()
 
     class AutoDeposit(StatesGroup):
         wait_for_amount = State()

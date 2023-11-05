@@ -1,19 +1,10 @@
-from abc import ABC, abstractmethod
-
 from aiogram.utils.keyboard import InlineKeyboardMarkup, InlineKeyboardButton, KeyboardButton, \
-    ReplyKeyboardMarkup, InlineKeyboardBuilder, ReplyKeyboardBuilder
+    InlineKeyboardBuilder
 
-from src.misc import AdminValidatePaymentCallback, TransactionType
-
-
-class AdminKeyboardsBase(ABC):
-    @staticmethod
-    @abstractmethod
-    def get_button_for_admin_menu() -> KeyboardButton:
-        pass
+from .admin_keyboards import AdminKeyboardBase
 
 
-class Mailing(AdminKeyboardsBase):
+class MailingKb(AdminKeyboardBase):
     @staticmethod
     def get_button_for_admin_menu():
         return KeyboardButton(text='✉ Рассылка ✉')
@@ -30,13 +21,13 @@ class Mailing(AdminKeyboardsBase):
 
     @staticmethod
     def get_cancel_markup() -> InlineKeyboardMarkup:
-        return InlineKeyboardMarkup(inline_keyboard=[[Mailing.get_cancel_button()]])
+        return InlineKeyboardMarkup(inline_keyboard=[[MailingKb.get_cancel_button()]])
 
     @staticmethod
     def get_confirm_mailing() -> InlineKeyboardMarkup:
         builder = InlineKeyboardBuilder()
         builder.button(text='❗ Начать рассылку ❗', callback_data='start_mailing')
-        builder.add(Mailing.get_cancel_button())
+        builder.add(MailingKb.get_cancel_button())
         builder.adjust(1)
         return builder.as_markup()
 
@@ -60,29 +51,3 @@ class Mailing(AdminKeyboardsBase):
             markup_builder.attach(row_builder)
 
         return markup_builder.as_markup()
-
-
-class AdminKeyboards:
-    mailing = Mailing
-
-    @classmethod
-    def get_admin_menu(cls) -> ReplyKeyboardMarkup:
-        builder = ReplyKeyboardBuilder()
-        builder.add(
-            cls.mailing.get_button_for_admin_menu()
-        )
-        builder.adjust(1)
-        return builder.as_markup(resize_keyboard=True)
-
-    @staticmethod
-    def get_accept_or_reject_transaction(transaction_type: TransactionType,
-                                         user_id: int, amount: float) -> InlineKeyboardMarkup:
-        builder = InlineKeyboardBuilder()
-        builder.button(text='✅', callback_data=AdminValidatePaymentCallback(
-            user_id=user_id, amount=amount, transaction_type=transaction_type, confirm=True))
-        builder.button(text='❌', callback_data=AdminValidatePaymentCallback(
-            user_id=user_id, amount=amount, transaction_type=transaction_type, confirm=False))
-        return builder.as_markup()
-
-
-

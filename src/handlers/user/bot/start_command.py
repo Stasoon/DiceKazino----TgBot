@@ -1,31 +1,18 @@
-import traceback
-
-from aiogram import Router, F
+from aiogram import Router
 from aiogram.filters.command import Command, CommandObject
 from aiogram.types import Message
 
-from src.database import users, referrals, games, Game
-from src.filters.game_show_cmd_filter import GameShowCmdFilter
+from src.handlers.user.bot import even_uneven
+from src.filters.cmd_args_starts_with_filter import CmdArgsStartsWithFilter
+from src.messages import get_full_game_info_text, GameErrors
 from src.keyboards import UserPrivateGameKeyboards
 from src.keyboards.user import UserMenuKeyboards
-from src.messages import get_full_game_info_text, GameErrors
 from src.messages.user import UserMenuMessages
+from src.database import users, games, Game
 from src.misc import GameStatus
-from src.utils import logger
 
 
 # region Utils
-
-async def send_game(message: Message, game: Game) -> None:
-    """Показать игру, когда человек перешёл из чата в бота"""
-    if game and game.status == GameStatus.WAIT_FOR_PLAYERS:
-        await message.answer(
-            text=await get_full_game_info_text(game),
-            reply_markup=await UserPrivateGameKeyboards.show_game(game),
-            parse_mode='HTML'
-        )
-    else:
-        await message.answer(GameErrors.get_game_is_finished(), parse_mode='HTML')
 
 
 async def send_welcome(start_message: Message):
@@ -43,7 +30,7 @@ async def process_referral_code_arg(command: CommandObject, new_user_id: int) ->
         return False
 
     referral_code = int(args[0])
-    return await referrals.add_referral(referrer_telegram_id=referral_code, referral_telegram_id=new_user_id)
+    return await users.add_referral(referrer_id=referral_code, user_telegram_id=new_user_id)
 
 
 async def get_game_by_args(command_args: str) -> Game | None:
@@ -52,7 +39,6 @@ async def get_game_by_args(command_args: str) -> Game | None:
         game_number = int(command_args.split('_')[2])
         return await games.get_game_obj(game_number)
     except Exception as e:
-        logger.exception(f'{e}, {traceback.format_exc()}')
         return
 
 
@@ -77,12 +63,29 @@ async def handle_empty_start_cmd(message: Message, command: CommandObject):
 
 async def handle_start_to_show_game_cmd(message: Message, command: CommandObject):
     game = await get_game_by_args(command.args)
-    await send_game(message, game)
+
+    if not game or game.status != GameStatus.WAIT_FOR_PLAYERS:
+        await message.answer(GameErrors.get_game_is_finished(), parse_mode='HTML')
+        return
+
+    await message.answer(
+        text=await get_full_game_info_text(game),
+        reply_markup=await UserPrivateGameKeyboards.show_game(game),
+        parse_mode='HTML'
+    )
+
+
+async def handle_even_u_neven_cmd(message: Message, args: str, state):
+    # такой формат аргументов задаётся в коде игры
+    round_num, bet_option = args.split('_')
+    await even_uneven.show_bet_entering(message=message, state=state, round_number=round_num, bet_option=bet_option)
+
 
 # endregion
 
 
 def register_start_command_handler(router: Router):
     # Регистрация обработчика команды /start
-    router.message.register(handle_start_to_show_game_cmd, Command('start'), GameShowCmdFilter('_'))
+    router.message.register(handle_start_to_show_game_cmd, Command('start'), CmdArgsStartsWithFilter('_'))
+    router.message.register(handle_even_u_neven_cmd, Command('start'), CmdArgsStartsWithFilter('EuN_'))
     router.message.register(handle_empty_start_cmd, Command('start'))

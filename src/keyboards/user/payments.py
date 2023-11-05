@@ -1,7 +1,9 @@
+from typing import Literal
+
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.keyboard import (InlineKeyboardMarkup, InlineKeyboardBuilder)
 
-from src.misc import (NavigationCallback, PaymentCheckCallback, TransactionType,
+from src.misc import (NavigationCallback, PaymentCheckCallback,
                       BalanceTransactionCallback, PaymentMethod, ConfirmWithdrawRequisitesCallback)
 from src.utils import cryptobot
 
@@ -16,7 +18,7 @@ class UserPaymentKeyboards:
         )
 
     @staticmethod
-    def get_payment_methods(transaction_type: TransactionType) -> InlineKeyboardMarkup:
+    def get_payment_methods(transaction_type: Literal['deposit', 'withdraw']) -> InlineKeyboardMarkup:
         """Возвращает клавиатуру с методами пополнения"""
         builder = InlineKeyboardBuilder()
 
@@ -54,7 +56,7 @@ class UserPaymentKeyboards:
         return builder.as_markup()
 
     @staticmethod
-    async def get_cryptobot_choose_currency(transaction_type: TransactionType) -> InlineKeyboardMarkup:
+    async def get_crypto_bot_choose_currency(transaction_type: Literal['deposit', 'withdraw']) -> InlineKeyboardMarkup:
         """Возвращает клавиатуру, которая должна отображаться после нажатия на метод оплаты Крипто Ботом"""
         currency_builder = InlineKeyboardBuilder()
 

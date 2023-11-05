@@ -7,7 +7,7 @@ from cachetools import TTLCache
 from src.messages import get_throttling_message
 
 
-SECONDS_BETWEEN_ACTIONS = 1
+SECONDS_BETWEEN_ACTIONS = 0.8
 cache = TTLCache(maxsize=20_000, ttl=SECONDS_BETWEEN_ACTIONS)
 
 

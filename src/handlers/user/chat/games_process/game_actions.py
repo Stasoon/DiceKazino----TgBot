@@ -3,7 +3,8 @@ import asyncio
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, ForceReply
 
-from src.database import games, transactions, game_scores, Game
+from src.database import games, transactions, Game
+from src.database.games import game_scores
 from src.handlers.user.bot.game_strategies import BlackJackStrategy, BaccaratStrategy
 from src.messages.user import UserPublicGameMessages
 from src.misc import GamesCallback, GameStatus, GameCategory
@@ -36,7 +37,7 @@ async def start_chat_game(game: Game, callback: CallbackQuery):
 async def join_chat_game(callback: CallbackQuery, game: Game):
     """Добавляет юзера в игру. Если все игроки собраны, запускает игру"""
     await games.add_user_to_game(telegram_id=callback.from_user.id, game_number=game.number)
-    await transactions.debit_bet(game=game, user_telegram_id=callback.from_user.id, amount=game.bet)
+    await transactions.deduct_bet_from_user_balance(game=game, user_telegram_id=callback.from_user.id, amount=game.bet)
 
     if len(await games.get_players_of_game(game)) >= game.max_players:
         await start_chat_game(game, callback)
@@ -73,12 +74,12 @@ async def finish_game(game: Game, message: Message):
         # Возвращаем деньги участникам
         for move in game_moves:
             player = await move.player.get()
-            await transactions.refund((player.telegram_id,), game=game, amount=game.bet)
+            await transactions.make_bet_refund(player.telegram_id, game=game, amount=game.bet)
     else:  # значения разные
         # Получаем победителя
         winner_id = (await max_move.player.get()).telegram_id
         # Начисляем выигрыш на баланс
-        await transactions.accrue_winnings(game, winner_id, game.bet * win_coefficient)
+        await transactions.accrue_winnings(game=game, winner_telegram_id=winner_id, amount=game.bet * win_coefficient)
 
     seconds_to_wait = 3
     await asyncio.sleep(seconds_to_wait)

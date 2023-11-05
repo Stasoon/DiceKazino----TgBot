@@ -1,7 +1,7 @@
 from tortoise.exceptions import DoesNotExist
 from tortoise.functions import Sum
 
-from .models import PlayingCard
+from ..models import PlayingCard
 
 
 DEALER_ID = 0

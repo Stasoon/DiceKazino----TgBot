@@ -3,7 +3,8 @@ from typing import Tuple
 from PIL import Image, ImageDraw, ImageFont
 from aiogram.types import BufferedInputFile
 
-from src.database import Game, playing_cards, games
+from src.database import Game, games
+from ...database.games import playing_cards
 from .base_painter import _GameImagePainter
 
 
@@ -76,7 +77,7 @@ class BlackJackImagePainter(_GameImagePainter):
 
         for card_num, card in enumerate(player_cards):
             card_file_name = f'{card.value}{card.suit}'
-            card_pos = (cards_start_xy[0] - self.card_size[0] // 8 * len(player_cards) + self.cards_x_offset * card_num,
+            card_pos = (cards_start_xy[0] + self.card_size[0] // 8 * len(player_cards) - self.cards_x_offset * card_num,
                         cards_start_xy[1])
             await self._draw_card(card_file_name=card_file_name, xy=card_pos)
 
@@ -110,7 +111,7 @@ class BlackJackImagePainter(_GameImagePainter):
             )
             await self.__draw_second_player_cards(
                 player_id=players[1].telegram_id,
-                cards_start_xy=(middle_x + int(middle_x / 1.5), players_cards_start_y)
+                cards_start_xy=(middle_x + int(middle_x / 1.2), players_cards_start_y)
             )
             # рисуем карты и очки банкира
             await self.__draw_banker_cards_and_points(show_cards=is_finish)

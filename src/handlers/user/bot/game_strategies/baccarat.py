@@ -3,10 +3,12 @@ from typing import Collection, Union, Any, Generator
 
 from aiogram import Router, F, Bot
 from aiogram.enums import ChatAction
+from aiogram.exceptions import TelegramNetworkError
 from aiogram.types import Message, ReplyKeyboardRemove
 
-from src.database import Game, PlayerScore, games, game_scores, transactions, playing_cards
-from src.handlers.user.game_strategy import GameStrategy
+from src.database import Game, PlayerScore, games, transactions
+from src.database.games import playing_cards, game_scores
+from src.handlers.user.bot.game_strategies.game_strategy import GameStrategy
 from src.misc.enums import BaccaratBettingOption
 from src.utils.game_messages_sender import GameMessageSender
 from src.utils.card_images import BaccaratImagePainter
@@ -25,6 +27,7 @@ PLAYER_ID = 1
 
 
 def get_points_of_card(card: Card) -> int:
+    """ Возвращает количество очков, которое даёт конкретная карта """
     if card.value in ["10", "В", "Д", "К"]:
         return 0
     elif card.value == 'Т':
@@ -34,11 +37,16 @@ def get_points_of_card(card: Card) -> int:
 
 
 def count_player_points(cards: list[Card]) -> int:
+    """ Рассчитывает  """
     points = (get_points_of_card(card) for card in cards)
     return sum(points) % 10
 
 
 async def deal_card(deck: Generator[Card, Any, Any], player_id: int, game: Game):
+    """
+    Получает следующую карту из колоды и сохраняет её в базу данных.
+    Возвращает полученную карту.
+    """
     card = next(deck)
     await playing_cards.add_card_to_player_hand(
         game_number=game.number, player_telegram_id=player_id,
@@ -49,6 +57,7 @@ async def deal_card(deck: Generator[Card, Any, Any], player_id: int, game: Game)
 
 
 def get_win_coefficient(winner: BaccaratBettingOption):
+    """ Возвращает коэффициент, который получат игроки, поставившие на выигравшую опцию"""
     match winner:
         case BaccaratBettingOption.PLAYER:
             return 2
@@ -56,11 +65,13 @@ def get_win_coefficient(winner: BaccaratBettingOption):
             return 1.95
         case BaccaratBettingOption.TIE:
             return 8
-        case _:
-            return None
 
 
 def check_clear_win_and_get_won_option(player_points: int, banker_points: int) -> Union[BaccaratBettingOption, None]:
+    """
+    Проверяет, есть ли чистая победа у игрока или банкира.
+    Если есть - возвращает победившую опцию, иначе - None
+    """
     if player_points not in (8, 9) and banker_points not in (8, 9):
         return None
 
@@ -72,6 +83,10 @@ def check_clear_win_and_get_won_option(player_points: int, banker_points: int) -
 
 
 def should_dealer_pick_third_card(banker_points: int, player_third_card: Card) -> bool:
+    """
+    По специальной таблице проверяет, должен ли брать дилер третью карту.
+    Решение зависит от текущих очков банкира и того, какая третья карта у игрока.
+    """
     card_points = get_points_of_card(player_third_card)
     flag = (
             (0 <= banker_points <= 2) or
@@ -84,6 +99,7 @@ def should_dealer_pick_third_card(banker_points: int, player_third_card: Card) -
 
 
 def get_winner(banker_points: int, player_points: int) -> BaccaratBettingOption:
+    """ Получает победившую опцию (ничья/банкир/игрок) на основе очков банкира и игрока. """
     if banker_points == player_points:
         return BaccaratBettingOption.TIE
     elif player_points > banker_points:
@@ -93,7 +109,7 @@ def get_winner(banker_points: int, player_points: int) -> BaccaratBettingOption:
 
 
 async def process_game_and_get_won_option(bot: Bot, game: Game):
-    deck = get_shuffled_deck(decks_count=2)
+    deck = get_shuffled_deck(decks_count=3)
 
     player_cards = [await deal_card(player_id=PLAYER_ID, game=game, deck=deck) for _ in range(2)]
     banker_cards = [await deal_card(player_id=BANKER_ID, game=game, deck=deck) for _ in range(2)]
@@ -126,13 +142,17 @@ async def process_game_and_get_won_option(bot: Bot, game: Game):
 
 
 async def send_result_to_players(bot, game: Game, bet_choices: Collection[PlayerScore]):
+    """ Отправляет результаты игры всем её участникам, а также в игровой чат. """
     player_ids = await games.get_player_ids_of_game(game)
 
     # отправляем action загрузки фото
-    await asyncio.gather(*[
-        bot.send_chat_action(chat_id=player_id, action=ChatAction.UPLOAD_PHOTO)
-        for player_id in player_ids
-    ])
+    try:
+        await asyncio.gather(*[
+            bot.send_chat_action(chat_id=player_id, action=ChatAction.UPLOAD_PHOTO)
+            for player_id in player_ids
+        ])
+    except TelegramNetworkError:
+        pass
 
     # Генерируем фото и загружаем из буфера. Отправляем первому юзеру
 
@@ -178,6 +198,7 @@ class BaccaratStrategy(GameStrategy):
 
     @staticmethod
     def __interpret_user_bet_choice(bet_text: str) -> int:
+        """ Возвращает тип """
         match bet_text:
             case '👤 Игрок':
                 return BaccaratBettingOption.PLAYER.value
@@ -213,11 +234,9 @@ class BaccaratStrategy(GameStrategy):
         await GameMessageSender(bot, game).send(text='Все игроки сделали ставки')
         await process_game_and_get_won_option(game=game, bot=bot)
 
-        player_res = await playing_cards.count_player_score(game_number=game.number, player_id=PLAYER_ID)
-        banker_res = await playing_cards.count_player_score(game_number=game.number, player_id=BANKER_ID)
-        if banker_res > player_res: won_option = BaccaratBettingOption.BANKER
-        elif banker_res < player_res: won_option = BaccaratBettingOption.PLAYER
-        else: won_option = BaccaratBettingOption.TIE
+        player_res = await playing_cards.count_player_score(game_number=game.number, player_id=PLAYER_ID) % 10
+        banker_res = await playing_cards.count_player_score(game_number=game.number, player_id=BANKER_ID) % 10
+        won_option = get_winner(banker_points=banker_res, player_points=player_res)
 
         win_coefficient = get_win_coefficient(won_option)
         bet_choices = await game_scores.get_game_moves(game)

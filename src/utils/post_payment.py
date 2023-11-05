@@ -1,30 +1,30 @@
-from typing import Optional
+from typing import Optional, Literal
 
 from aiogram import Bot
 
 from settings import Config
 from src.messages.admin import AdminMessages
 from src.keyboards.admin import AdminKeyboards
-from src.misc import TransactionType, PaymentMethod
+from src.misc import PaymentMethod
 
 
 async def send_payment_request_to_admin(
         bot: Bot,
         user_id: int,
         amount: float,
-        transaction_type: TransactionType,
+        transaction_type: Literal['deposit', 'withdraw'],
         method: PaymentMethod,
         user_name: str = 'Пользователь',
         requisites: str = None,
         photo_file_id: Optional[str] = None):
 
-    if transaction_type not in (TransactionType.DEPOSIT, TransactionType.WITHDRAW):
+    if transaction_type not in ('deposit', 'withdraw'):
         raise ValueError
 
     reply_markup = AdminKeyboards.get_accept_or_reject_transaction(transaction_type, user_id, amount)
     channel_id = (
         Config.Payments.DEPOSITS_CHANNEL_ID
-        if transaction_type == TransactionType.DEPOSIT
+        if transaction_type == 'deposit'
         else Config.Payments.WITHDRAWS_CHANNEL_ID
     )
     text = AdminMessages.get_deposit_request(

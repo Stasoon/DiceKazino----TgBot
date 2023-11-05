@@ -3,7 +3,7 @@ from aiogram.types import CallbackQuery
 from aiogram.exceptions import TelegramAPIError
 
 from src.filters import IsAdminFilter
-from src.misc import AdminValidatePaymentCallback, TransactionType
+from src.misc import AdminValidatePaymentCallback
 from src.database.transactions import deposit_to_user
 
 
@@ -17,7 +17,7 @@ async def handle_validate_payment_callback(callback: CallbackQuery, callback_dat
             from_chat_id=callback.message.chat.id,
             message_id=callback.message.message_id)
 
-    transaction_word = 'пополнение' if callback_data.transaction_type == TransactionType.DEPOSIT else 'вывод'
+    transaction_word = 'пополнение' if callback_data.transaction_type == 'deposit' else 'вывод'
 
     if callback_data.confirm is False:
         await callback.bot.send_message(
@@ -28,7 +28,7 @@ async def handle_validate_payment_callback(callback: CallbackQuery, callback_dat
 
     await callback.bot.send_message(
         callback_data.user_id, text=f'✅ Ваша заявка на {transaction_word} {callback_data.amount}₽ была выполнена.')
-    if callback_data.transaction_type == TransactionType.DEPOSIT:
+    if callback_data.transaction_type == 'deposit':
         await deposit_to_user(callback_data.user_id, callback_data.amount)
 
 

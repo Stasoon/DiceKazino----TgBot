@@ -1,22 +1,24 @@
 from datetime import datetime
+from typing import Literal
 
 from aiogram import html
 
-from src.misc import TransactionType, PaymentMethod
+from src.misc import PaymentMethod
 
 
 class AdminMessages:
     @staticmethod
-    def get_deposit_request(transaction_type: TransactionType,
+    def get_deposit_request(transaction_type: Literal['deposit', 'withdraw'],
                             user_id: int,
                             amount: float,
                             user_name: str = 'Пользователь',
                             method: PaymentMethod = None,
                             user_requisites: str = None):
 
-        transaction_str = f'➕ Пополнение баланса ➕' \
-            if transaction_type == TransactionType.DEPOSIT \
-            else f'➖ Вывод средств ➖'
+        if transaction_type == 'deposit':
+            transaction_str = f'➕ Пополнение баланса ➕'
+        else:
+            transaction_str = f'➖ Вывод средств ➖'
         user_requisites_str = f'💳 Реквизиты: \n{user_requisites} \n' if user_requisites else ''
 
         return f'{html.bold(transaction_str)} \n\n' \

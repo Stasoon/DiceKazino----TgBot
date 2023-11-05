@@ -4,8 +4,9 @@ from aiogram import Router, F, Bot
 from aiogram.enums import ChatAction
 from aiogram.types import CallbackQuery, ReplyKeyboardRemove
 
-from src.database import Game, games, playing_cards, game_scores, transactions
-from src.handlers.user.game_strategy import GameStrategy
+from src.database import Game, games, transactions
+from src.database.games import playing_cards, game_scores
+from src.handlers.user.bot.game_strategies.game_strategy import GameStrategy
 from src.keyboards import UserMenuKeyboards
 from src.keyboards.user.games import BlackJackKeyboards
 from src.misc import GameStatus
@@ -125,7 +126,7 @@ class BlackJackStrategy(GameStrategy):
                 continue
             # если ничья
             elif player_score.value == dealer_points:
-                await transactions.refund(players_telegram_ids=(player_id,), amount=game.bet, game=game)
+                await transactions.make_bet_refund(player_id=player_id, amount=game.bet, game=game)
                 continue
 
             # блэк джек (чистая победа)
@@ -135,7 +136,7 @@ class BlackJackStrategy(GameStrategy):
                 continue
 
     @staticmethod
-    async def start_game(callback: CallbackQuery, game: Game):
+    async def start_game(bot: Bot, game: Game):
         player_ids = sorted(await games.get_player_ids_of_game(game))
 
         # Выдаём две карты банкиру
@@ -145,10 +146,10 @@ class BlackJackStrategy(GameStrategy):
         for player_id in player_ids:
             for _ in range(2):
                 await deal_next_card_for_player_and_get_score(game.number, player_id)
-        sender = GameMessageSender(bot=callback.bot, game=game)
+        sender = GameMessageSender(bot=bot, game=game)
         await sender.send('Игра началась. Ожидайте своего хода', markup=ReplyKeyboardRemove(), player_ids=player_ids)
 
-        await BlackJackStrategy.send_move_to_player(callback.bot, game, player_ids[0])
+        await BlackJackStrategy.send_move_to_player(bot, game, player_ids[0])
 
     @staticmethod
     async def let_next_player_move_or_finish_game(player_id, game_number, bot):
@@ -213,7 +214,7 @@ class BlackJackStrategy(GameStrategy):
         points = await playing_cards.count_player_score(game_number, callback.from_user.id)
 
         # если меньше не проиграл, даём ещё ход
-        if points < 40:
+        if points < 21:
             await BlackJackStrategy.send_move_to_player(bot=callback.bot, game=game, player_id=callback.from_user.id)
             return
 
