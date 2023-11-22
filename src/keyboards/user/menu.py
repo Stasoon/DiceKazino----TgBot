@@ -2,7 +2,7 @@ from aiogram.types import WebAppInfo
 from aiogram.utils.keyboard import (InlineKeyboardMarkup, InlineKeyboardButton, KeyboardButton,
                                     ReplyKeyboardMarkup, InlineKeyboardBuilder)
 
-from src.misc import NavigationCallback
+from src.misc import MenuNavigationCallback
 
 invite_link = 'tg://msg_url?url=https://t.me/{bot_username}?start={user_tg_id}&text=Присоединяйся%20по%20моей%20ссылке'
 
@@ -16,7 +16,7 @@ class UserMenuKeyboards:
             [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="🔝 Топ игроков")],
             [KeyboardButton(text="📰 События"), KeyboardButton(text="ℹ Информация")],
             ],
-            resize_keyboard=True)
+            resize_keyboard=True, input_field_placeholder=None)
         return menu_kb
 
     # Events
@@ -36,10 +36,10 @@ class UserMenuKeyboards:
         """Возвращает клавиатуру, которая должна отображаться после перехода в Профиль"""
         builder = InlineKeyboardBuilder()
 
-        builder.button(text='💳 Пополнить', callback_data=NavigationCallback(branch='profile', option='deposit'))
-        builder.button(text='💰 Вывести', callback_data=NavigationCallback(branch='profile', option='withdraw'))
+        builder.button(text='💳 Пополнить', callback_data=MenuNavigationCallback(branch='profile', option='deposit'))
+        builder.button(text='💰 Вывести', callback_data=MenuNavigationCallback(branch='profile', option='withdraw'))
         builder.button(text='👥 Реферальная система',
-                       callback_data=NavigationCallback(branch='profile', option='referral_system'))
+                       callback_data=MenuNavigationCallback(branch='profile', option='referral_system'))
 
         builder.adjust(2, 1)
         return builder.as_markup()
@@ -51,7 +51,7 @@ class UserMenuKeyboards:
 
         url = invite_link.format(bot_username=bot_username, user_tg_id=user_telegram_id)
         builder.button(text='📲 Пригласить друга', url=url)
-        builder.button(text='🔙 Назад', callback_data=NavigationCallback(branch='profile'))
+        builder.button(text='🔙 Назад', callback_data=MenuNavigationCallback(branch='profile'))
         builder.adjust(1)
 
         return builder.as_markup()

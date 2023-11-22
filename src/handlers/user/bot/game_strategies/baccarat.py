@@ -124,7 +124,7 @@ async def process_game_and_get_won_option(bot: Bot, game: Game):
 
     # выдача карты игроку, если от 0 до 5 очков
     sender = GameMessageSender(bot, game)
-    if player_points < 6:
+    if player_points <= 5:
         player_third_card = await deal_card(deck=deck, player_id=PLAYER_ID, game=game)
         await sender.send(text='Игрок берёт третью карту...')
         await asyncio.sleep(0.8)
@@ -219,6 +219,7 @@ class BaccaratStrategy(GameStrategy):
         if not betting_option_number:
             return
 
+        # Сохраяняем ставку
         await game_scores.add_player_move_if_not_moved(game, user_id, betting_option_number)
         await message.answer(text='Ваша ставка принята', reply_markup=ReplyKeyboardRemove())
 
@@ -244,7 +245,7 @@ class BaccaratStrategy(GameStrategy):
         for choice in bet_choices:
             if choice.value == won_option.value:
                 await transactions.accrue_winnings(
-                    game=game,
+                    game_category=game.category,
                     winner_telegram_id=(await choice.player.get()).telegram_id,
                     amount=game.bet * win_coefficient
                 )

@@ -1,10 +1,8 @@
-from typing import Collection
-
 from aiogram import html
 
 from src.database import games, users, Game, PlayerScore, get_top_winners_by_amount
+from src.messages.user.games.creatable_game_messages_base import CreatableGamesMessages
 from src.utils.text_utils import format_float_to_rub_string
-from src.misc.enums import BaccaratBettingOption
 from src.misc import GameCategory
 from settings import Config
 
@@ -13,7 +11,7 @@ from settings import Config
 
 async def get_short_game_info_text(game: Game) -> str:
     """Возвращает строку с коротким описанием игры"""
-    header = _get_game_header(game)
+    header = get_game_header(game)
     creator = await games.get_creator_of_game(game)
 
     return f'{header} \n' \
@@ -22,13 +20,13 @@ async def get_short_game_info_text(game: Game) -> str:
 
 
 async def get_full_game_info_text(game: Game):
-    header = html.bold(_get_game_header(game))
+    header = html.bold(get_game_header(game))
     players_text = f"👥 Игроки: \n{await _get_game_participants(game)}"
     bet_text = f"💰 Ставка: {format_float_to_rub_string(game.bet, use_html=False)}"
     return f'{header} \n\n{players_text} \n\n{bet_text}'
 
 
-def _get_game_header(game: Game):
+def get_game_header(game: Game):
     return f'{game.game_type.value} {game.game_type.get_full_name()} №{game.number}'
 
 
@@ -58,39 +56,8 @@ async def _get_game_participants(game: Game):
 # endregion Utils
 
 
-class BaccaratMessages:
-    @staticmethod
-    def get_bet_prompt() -> str:
-        return 'Выберите, на чью победу хотите поставить:'
-
-    @staticmethod
-    async def get_baccarat_results(bet_choices: Collection[PlayerScore]):
-        text = 'Результаты \n\n'
-        for choice in bet_choices:
-            text += f'{await choice.player.get()} — '
-            match choice.value:
-                case BaccaratBettingOption.PLAYER.value:
-                    text += 'игрок \n'
-                case BaccaratBettingOption.BANKER.value:
-                    text += 'банкир \n'
-                case _:
-                    text += 'ничья \n'
-        return text
-
-
-class EvenUnevenMessages:
-    @staticmethod
-    def get_timer_template(round_number: int) -> str:
-        return f'🎲 Раунд #{round_number} \n' + \
-               '⏱ {} \n♻ Ожидание ставок...'
-
-
-class BlackJackMessages:
-    pass
-
-
 class UserPrivateGameMessages:
-    """Содержит функции для сообщений, связанных с играми и отправляемых в боте"""
+    """Содержит функции для получения текстов сообщений, связанных с играми и отправляемых в боте"""
 
     @staticmethod
     def get_game_category(category: GameCategory) -> str:
@@ -120,13 +87,19 @@ class UserPrivateGameMessages:
         return '🧩 Выберите тип игры:'
 
     @staticmethod
-    async def enter_bet_amount(user_id: int, game_type_name: str) -> str:
+    async def enter_bet_amount(
+            user_id: int, game_type_name: str, message_instance: CreatableGamesMessages = None
+    ) -> str:
         """Просьба ввести ставку"""
-        balance = await users.get_user_balance(user_id)
+        user = await users.get_user_or_none(user_id)
+
+        # Уникальный для игрового режима текст
+        game_type_unique_text = message_instance.ask_for_bet_amount(user.name) + "\n\n" if message_instance else ""
 
         return f'➕ Создание игры в {game_type_name} \n\n' \
+               f'{game_type_unique_text}'\
                f'— Минимальная сумма ставки: {format_float_to_rub_string(Config.Games.min_bet_amount)} \n' \
-               f'— Ваш баланс: {format_float_to_rub_string(balance)} \n\n' \
+               f'— Ваш баланс: {format_float_to_rub_string(user.balance)} \n\n' \
                f'ℹ Введите размер ставки или нажмите Отмена'
 
     @staticmethod
@@ -135,9 +108,17 @@ class UserPrivateGameMessages:
         return f'✅ Игра {game_type.value} {game_type.get_full_name()} №{game.number} создана. \n\n' \
                f'⏰ Скоро кто-то присоединится...'
 
+    @staticmethod
+    def get_game_successfully_canceled():
+        return 'Игра отменена'
+
+    @staticmethod
+    def get_its_last_page():
+        return 'Это последняя страница.'
+
 
 class UserPublicGameMessages:
-    """Содержит функции для сообщений, связанных с играми и отправляемых в чаты"""
+    """Содержит функции для получения текстов сообщений, связанных с играми и отправляемых в чаты"""
 
     @staticmethod
     async def get_game_created_in_bot_notification(game: Game, bot_username: str) -> str:
@@ -168,7 +149,7 @@ class UserPublicGameMessages:
     async def get_game_in_chat_finish(game: Game, winner_id: int | None, game_moves: list[PlayerScore],
                                       win_amount: float):
         # Получаем заголовок игры
-        header = _get_game_header(game)
+        header = get_game_header(game)
 
         # Получаем результаты игры
         results = f"📊 Результаты: \n{await _get_players_results(game_moves)}"
@@ -186,14 +167,12 @@ class UserPublicGameMessages:
     # region MiniGames
     @staticmethod
     async def get_mini_game_victory(game: Game, win_amount: float):
-        # creator = await games.get_creator_of_game(game)
         return f'👤 {str(game.creator)} \n' \
                f'🎉 Вы выиграли! \n' \
                f'➕ Сумма выигрыша: {format_float_to_rub_string(win_amount)}'
 
     @staticmethod
     async def get_mini_game_loose(game: Game) -> str:
-        # creator = await game.creator
         return f'👤 {str(game.creator)} \n' \
                f'😞 Вы проиграли {format_float_to_rub_string(game.bet)} \n' \
                f'🍀 Возможно, в следующий раз повезёт'

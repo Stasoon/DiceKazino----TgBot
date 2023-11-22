@@ -3,8 +3,10 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup, 
 from aiogram.enums.dice_emoji import DiceEmoji
 
 from src.database import Game, games
-from src.misc import GamesCallback, NavigationCallback, GameType, GameCategory
-from src.misc.callback_factories import BlackJackCallback
+from src.misc import GameType, GameCategory, GameStatus
+from src.misc.callback_factories import (
+    BlackJackCallback, GamesCallback, MenuNavigationCallback, GamePagesNavigationCallback
+)
 
 
 class BaccaratKeyboards:
@@ -26,7 +28,7 @@ class EvenUnevenKeyboards:
     @staticmethod
     def get_bet_options(round_number: int, bot_username: str) -> InlineKeyboardMarkup:
         builder = InlineKeyboardBuilder()
-        url = f'https://t.me/{bot_username}?start=EuN_{round_number}_'+'{move}'
+        url = f'https://t.me/{bot_username}?start=EuN_{round_number}_' + '{move}'
         builder.button(text='Чётное число (X1.5)', url=url.format(move='A'))
         builder.button(text='Нечётное число (X1.5)', url=url.format(move='B'))
         builder.button(text='1 > 2 (X1.5)', url=url.format(move='C'))
@@ -55,7 +57,10 @@ class UserPrivateGameKeyboards:
     def get_dice_kb(dice_emoji: str) -> ReplyKeyboardMarkup:
         """Возвращает reply клавиатуру с эмодзи"""
         dice_button = KeyboardButton(text=dice_emoji)
-        return ReplyKeyboardMarkup(keyboard=[[dice_button]])
+        return ReplyKeyboardMarkup(
+            keyboard=[[dice_button]], one_time_keyboard=True,
+            input_field_placeholder='Нажмите, чтобы походить ⬇'
+        )
 
     @staticmethod
     def get_play_menu() -> InlineKeyboardMarkup:
@@ -63,18 +68,18 @@ class UserPrivateGameKeyboards:
         builder = InlineKeyboardBuilder()
 
         builder.button(text='🎲 Games', callback_data=GamesCallback(action='show', game_category=GameCategory.BASIC))
-        builder.button(text='♠ BlackJack', callback_data=GamesCallback(action='show',
-                                                                       game_category=GameCategory.BLACKJACK,
-                                                                       game_type=GameType.BJ))
-        builder.button(text='🎴 Baccarat', callback_data=GamesCallback(action='show',
-                                                                      game_category=GameCategory.BACCARAT,
-                                                                      game_type=GameType.BACCARAT))
+        builder.button(text='♠ BlackJack', callback_data=GamesCallback(
+            action='show', game_category=GameCategory.BLACKJACK, game_type=GameType.BJ))
+        builder.button(text='🎴 Baccarat', callback_data=GamesCallback(
+            action='show', game_category=GameCategory.BACCARAT, game_type=GameType.BACCARAT))
         builder.button(text='EvenUneven', url='https://t.me/+xpSCBf7Tbss3ZDVi')
         builder.adjust(1)
         return builder.as_markup()
 
     @staticmethod
-    async def get_game_category(available_games: list[Game], category: GameCategory) -> InlineKeyboardMarkup:
+    async def get_game_category(
+            available_games: list[Game], category: GameCategory, current_page_num: int
+    ) -> InlineKeyboardMarkup:
         """Возвращает клавиатуру, которая должна отображаться при нажатии на категорию игр"""
         builder = InlineKeyboardBuilder()
         builder.button(text='➕ Создать', callback_data=GamesCallback(action='create', game_category=category))
@@ -82,15 +87,24 @@ class UserPrivateGameKeyboards:
         builder.adjust(2)
         builder.button(text='📊 Статистика', callback_data=GamesCallback(action='stats', game_category=category))
 
-        for game in available_games[:10]:
+        # Добавление игр
+        for game in available_games:
             text = f'{game.game_type.value}#{game.number} | 💰{game.bet} | {(await game.creator.first()).name}'
             builder.button(
                 text=text,
                 callback_data=GamesCallback(action='show', game_category=category, game_number=game.number)
             ).row()
 
-        builder.button(text='🔙 Назад', callback_data=NavigationCallback(branch='game_strategies'))
-        builder.adjust(2, 1)
+        # Навигация по страницам с играми
+        navigation_builder = InlineKeyboardBuilder()
+        navigation_builder.button(text='◀', callback_data=GamePagesNavigationCallback(
+            direction='prev', category=category, current_page=current_page_num))
+        navigation_builder.button(text='▶', callback_data=GamePagesNavigationCallback(
+            direction='next', category=category, current_page=current_page_num))
+        navigation_builder.button(text='🔙 Назад', callback_data=MenuNavigationCallback(branch='game_strategies'))
+        navigation_builder.adjust(2, 1)
+
+        builder.adjust(2, 1).attach(navigation_builder)
         return builder.as_markup()
 
     @staticmethod
@@ -132,14 +146,24 @@ class UserPrivateGameKeyboards:
         return builder.as_markup()
 
     @staticmethod
-    async def get_join_game_or_back(game_category: GameCategory, game_number: int) -> InlineKeyboardMarkup:
+    async def get_join_game_or_back(user_id: int, game: Game) -> InlineKeyboardMarkup:
         """Клавиатура для просмотра игры из меню"""
+        game_creator = await games.get_creator_of_game(game)
         builder = InlineKeyboardBuilder()
-        builder.button(text='⚡ Принять ставку ⚡',
-                       callback_data=GamesCallback(
-                           action='join', game_category=game_category, game_number=game_number)
-                       )
-        builder.button(text='🔙 Назад', callback_data=GamesCallback(action='show', game_category=game_category))
+
+        if game_creator.telegram_id != user_id:
+            builder.button(
+                text='⚡ Принять ставку ⚡',
+                callback_data=GamesCallback(action='join', game_category=game.category, game_number=game.number)
+            )
+
+        # Если пользователь - создатель игры, и она ещё не началась, добавляем кнопку отмены игры
+        if game_creator.telegram_id == user_id and game.status == GameStatus.WAIT_FOR_PLAYERS:
+            builder.button(text='❌ Отменить ❌', callback_data=GamesCallback(
+                game_number=game.number, action='cancel', game_category=game.category
+            ))
+
+        builder.button(text='🔙 Назад', callback_data=GamesCallback(action='show', game_category=game.category))
         builder.adjust(1)
         return builder.as_markup()
 

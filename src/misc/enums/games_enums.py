@@ -24,6 +24,7 @@ class GameCategory(str, Enum):
     BASIC = 'Игры'
     BLACKJACK = 'BlackJack'
     BACCARAT = 'Baccarat'
+    EVEN_UNEVEN = 'EuN'
 
 
 class GameType(str, Enum):

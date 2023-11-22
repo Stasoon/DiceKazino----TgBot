@@ -3,7 +3,7 @@ from typing import Literal
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.keyboard import (InlineKeyboardMarkup, InlineKeyboardBuilder)
 
-from src.misc import (NavigationCallback, PaymentCheckCallback,
+from src.misc import (MenuNavigationCallback, PaymentCheckCallback,
                       BalanceTransactionCallback, PaymentMethod, ConfirmWithdrawRequisitesCallback)
 from src.utils import cryptobot
 
@@ -43,7 +43,7 @@ class UserPaymentKeyboards:
 
         builder.adjust(2)
         back_builder = InlineKeyboardBuilder()
-        back_builder.button(text='🔙 Назад', callback_data=NavigationCallback(branch='profile'))
+        back_builder.button(text='🔙 Назад', callback_data=MenuNavigationCallback(branch='profile'))
         return builder.attach(back_builder).as_markup()
 
     @staticmethod
@@ -70,7 +70,7 @@ class UserPaymentKeyboards:
         currency_builder.adjust(4)
 
         back_builder = InlineKeyboardBuilder()
-        back_builder.button(text='🔙 Отмена', callback_data=NavigationCallback(branch='profile', option='deposit'))
+        back_builder.button(text='🔙 Отмена', callback_data=MenuNavigationCallback(branch='profile', option='deposit'))
         back_builder.adjust(1)
 
         currency_builder.attach(back_builder)

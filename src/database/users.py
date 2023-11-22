@@ -14,6 +14,13 @@ async def create_user_if_not_exists(
 ) -> bool:
     defaults = {'name': first_name, 'username': username, 'balance': balance, 'referred_by_id': referrer_telegram_id}
     user, created = await User.get_or_create(telegram_id=telegram_id, defaults=defaults)
+
+    # Если юзер существует, а name или username не заданы, указываем
+    if not created:
+        if not user.name: user.name = first_name
+        if not user.username: user.username = username
+        await user.save()
+
     return True if created else False
 
 

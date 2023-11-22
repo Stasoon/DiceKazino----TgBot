@@ -5,17 +5,20 @@ from tortoise.functions import Sum
 from ..models import User, Deposit
 
 
-async def deposit_to_user(user_id: int, amount: float):
+async def deposit_to_user(user_id: int, amount: float, create_record: bool = True) -> bool:
     """Начислить депозит юзеру"""
     amount = Decimal(amount)
     user = await User.get_or_none(telegram_id=user_id)
 
     if not user:
-        return
+        return False
 
     user.balance += amount
     await user.save()
-    await Deposit.create(user=user, amount=amount)
+
+    if create_record:
+        await Deposit.create(user=user, amount=amount)
+    return True
 
 
 async def get_user_all_deposits_sum(user: User) -> float:

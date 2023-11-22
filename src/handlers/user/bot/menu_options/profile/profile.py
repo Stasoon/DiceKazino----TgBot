@@ -5,7 +5,7 @@ from aiogram.types import CallbackQuery, Message
 from src.database import users
 from src.keyboards.user import UserMenuKeyboards
 from src.messages import UserMenuMessages
-from src.misc import (NavigationCallback)
+from src.misc import (MenuNavigationCallback)
 from .deposit import register_deposit_handlers
 from .withdraw import register_withdraw_handlers
 
@@ -64,11 +64,11 @@ def register_profile_handlers(router: Router):
     router.message.register(handle_profile_button, F.text.contains('👤 Профиль'))
 
     # опция Реферальная система
-    router.callback_query.register(handle_referral_system_callback, NavigationCallback.filter(
+    router.callback_query.register(handle_referral_system_callback, MenuNavigationCallback.filter(
         (F.branch == 'profile') & (F.option == 'referral_system')))
 
     # кнопка назад в Профиль
-    router.callback_query.register(handle_back_in_profile_callbacks, NavigationCallback.filter(
+    router.callback_query.register(handle_back_in_profile_callbacks, MenuNavigationCallback.filter(
         (F.branch == 'profile') & ~F.option))
 
     register_deposit_handlers(router)

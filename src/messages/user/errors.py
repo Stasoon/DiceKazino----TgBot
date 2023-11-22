@@ -1,6 +1,6 @@
 from src.utils.text_utils import format_float_to_rub_string
 from src.database import Game
-from .games import _get_game_header
+from .games import get_game_header
 
 
 def get_throttling_message() -> str:
@@ -120,4 +120,4 @@ class GameErrors:
 
     @staticmethod
     def get_another_game_not_finished(user_active_game: Game) -> str:
-        return f'❗Чтобы начать игру, завершите {_get_game_header(game=user_active_game)}'
+        return f'❗Чтобы начать игру, завершите {get_game_header(game=user_active_game)}'

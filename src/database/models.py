@@ -72,14 +72,6 @@ class PlayingCard(Model):
         table = "playing_cards"
 
 
-class EvenUnevenRound(Model):
-    number = fields.BigIntField(pk=True, generated=True, unique=True)
-    message_id = fields.BigIntField(null=True)
-
-    class Meta:
-        table = "even_uneven_rounds"
-
-
 class EvenUnevenPlayerBet(Model):
     player = fields.ForeignKeyField('models.User', related_name='even_uneven_player_bet')
     amount = fields.FloatField()
@@ -163,7 +155,7 @@ class Winning(Model):
     """Выигрыши в играх"""
     id = fields.BigIntField(pk=True, generated=True)
     user = fields.ForeignKeyField('models.User', related_name='user_winnings')
-    game = fields.ForeignKeyField('models.Game', related_name='game_winnings', null=True)
+    game_category = fields.CharEnumField(enum_type=GameCategory, description='game_winnings')
     amount = fields.DecimalField(max_digits=10, decimal_places=2)
     timestamp = fields.DatetimeField(auto_now_add=True)
 

@@ -6,18 +6,54 @@ from aiogram.types import CallbackQuery, Message
 from src.database import users, games, transactions
 from src.handlers.user.chat.chat import send_game_created_in_bot_notification
 from src.keyboards.user import UserPrivateGameKeyboards, UserMenuKeyboards
-from src.messages.user import UserMenuMessages, UserPrivateGameMessages, get_full_game_info_text, GameErrors
-from src.misc import NavigationCallback, GamesCallback, GameCategory, GameType, UserStates
-from src.utils.game_validations import validate_and_extract_bet_amount
+from src.messages import get_full_game_info_text
+from src.messages.user import UserMenuMessages, UserPrivateGameMessages, GameErrors
+from src.messages.user.games import BlackJackMessages, BaccaratMessages
+from src.misc import MenuNavigationCallback, GamesCallback, GameCategory, GameType, UserStates, GamePagesNavigationCallback
+from src.utils.game_validations import validate_and_extract_bet_amount, check_rights_and_cancel_game
 
 
 # region Utils
+
+
+def get_creatable_game_messages_instance(game_type: GameType):
+    match game_type:
+        case GameType.BJ:
+            return BlackJackMessages
+        case GameType.BACCARAT:
+            return BaccaratMessages
+        case _:
+            return None
 
 
 async def get_play_message_data(user_id: int) -> dict:
     text = UserMenuMessages.get_play_menu(await users.get_user_or_none(user_id))
     reply_markup = UserPrivateGameKeyboards.get_play_menu()
     return {'text': text, 'reply_markup': reply_markup, 'parse_mode': 'HTML'}
+
+
+async def show_game_category(to_callback: CallbackQuery, game_category: GameCategory, page_num: int = 0):
+    games_per_page = 2
+    offset = page_num * games_per_page
+
+    available_games = await games.get_bot_available_games(
+        game_category=game_category, limit=games_per_page, offset=offset,
+        for_user_id=to_callback.from_user.id
+    )
+
+    if page_num > 0 and len(available_games) < 1:
+        await to_callback.answer(UserPrivateGameMessages.get_its_last_page())
+        return
+
+    text = UserPrivateGameMessages.get_game_category(category=game_category)
+    markup = await UserPrivateGameKeyboards.get_game_category(
+        available_games=available_games, category=game_category, current_page_num=page_num
+    )
+
+    try:
+        await to_callback.message.edit_text(text=text, reply_markup=markup)
+    except Exception:
+        pass
 
 
 async def show_basic_game_types(to_message: Message):
@@ -31,11 +67,15 @@ async def show_basic_game_types(to_message: Message):
 async def show_bet_entering(callback: CallbackQuery, game_type: GameType, game_category: GameCategory):
     message = callback.message
     await message.delete()
-    await message.answer(
-        text=await UserPrivateGameMessages.enter_bet_amount(callback.from_user.id, game_type.get_full_name()),
-        reply_markup=UserPrivateGameKeyboards.get_cancel_bet_entering(game_category),
-        parse_mode='HTML'
+
+    message_instance = get_creatable_game_messages_instance(game_type=game_type)
+    text = await UserPrivateGameMessages.enter_bet_amount(
+        message_instance=message_instance, user_id=callback.from_user.id, game_type_name=game_type.get_full_name()
     )
+    await message.answer(
+        text=text, reply_markup=UserPrivateGameKeyboards.get_cancel_bet_entering(game_category), parse_mode='HTML'
+    )
+
 
 # endregion
 
@@ -51,14 +91,8 @@ async def handle_play_button(message: Message, state: FSMContext):
 async def handle_game_category_callback(callback: CallbackQuery, callback_data: GamesCallback, state: FSMContext):
     """Обработка нажатия на одну из категорий игр"""
     await state.clear()
-
-    available_games = await games.get_bot_available_games(callback_data.game_category)
-    await callback.message.edit_text(
-        text=UserPrivateGameMessages.get_game_category(category=callback_data.game_category),
-        reply_markup=await UserPrivateGameKeyboards.get_game_category(
-            available_games, category=callback_data.game_category
-        )
-    )
+    game_category = callback_data.game_category
+    await show_game_category(to_callback=callback, game_category=game_category)
 
 
 async def handle_game_category_stats_callback(callback: CallbackQuery, callback_data: GamesCallback):
@@ -73,13 +107,31 @@ async def handle_game_category_stats_callback(callback: CallbackQuery, callback_
 
 async def handle_refresh_games_callback(callback: CallbackQuery, callback_data: GamesCallback):
     """Обновление списка доступных игр"""
-    available_games = await games.get_bot_available_games(callback_data.game_category)
-    reply_markup = await UserPrivateGameKeyboards.get_game_category(available_games, callback_data.game_category)
     try:
-        await callback.message.edit_reply_markup(reply_markup=reply_markup)
+        await show_game_category(to_callback=callback, game_category=callback_data.game_category, page_num=0)
     except TelegramBadRequest:
         pass
     await callback.answer()
+
+
+async def handle_cancel_game_callback(callback: CallbackQuery, callback_data: GamesCallback):
+    """ Обработка нажатия на кнопку Отменить игру """
+    game = await games.get_game_obj(callback_data.game_number)
+    await check_rights_and_cancel_game(event=callback, game=game)
+    await callback.answer(text=UserPrivateGameMessages.get_game_successfully_canceled())
+    await show_game_category(to_callback=callback, game_category=callback_data.game_category)
+
+
+async def handle_game_pages_navigation_callback(callback: CallbackQuery, callback_data: GamePagesNavigationCallback):
+    if callback_data.direction == 'next':
+        page_num = callback_data.current_page + 1
+    else:
+        page_num = callback_data.current_page - 1
+
+    if page_num >= 0:
+        await show_game_category(to_callback=callback, game_category=callback_data.category, page_num=page_num)
+    else:
+        await callback.answer(UserPrivateGameMessages.get_its_last_page())
 
 
 async def handle_create_game_callback(callback: CallbackQuery, callback_data: GamesCallback, state: FSMContext):
@@ -99,6 +151,8 @@ async def handle_create_game_callback(callback: CallbackQuery, callback_data: Ga
             game_type = GameType.BJ
         elif game_category == GameCategory.BACCARAT:
             game_type = GameType.BACCARAT
+        else:
+            return
 
         await show_bet_entering(callback, game_type, game_category)
 
@@ -140,7 +194,6 @@ async def handle_bet_amount_message(message: Message, state: FSMContext):
     )
 
     await send_game_created_in_bot_notification(message.bot, created_game)
-
     await state.clear()
 
 
@@ -150,7 +203,7 @@ async def handle_show_game_callback(callback: CallbackQuery, callback_data: Game
     await callback.message.edit_text(
         text=await get_full_game_info_text(game),
         reply_markup=await UserPrivateGameKeyboards.get_join_game_or_back(
-            callback_data.game_category, callback_data.game_number
+            user_id=callback.from_user.id, game=game
         ),
         parse_mode='HTML'
     )
@@ -167,6 +220,7 @@ def register_play_handlers(router: Router):
     router.callback_query.register(handle_show_game_callback, GamesCallback.filter(
         (F.action == 'show') & F.game_number
     ))
+
     # показать категорию
     router.callback_query.register(handle_game_category_callback, GamesCallback.filter(
         (F.action == 'show') & F.game_category))
@@ -175,10 +229,20 @@ def register_play_handlers(router: Router):
     router.callback_query.register(handle_game_category_stats_callback, GamesCallback.filter(
         F.action == 'stats'
     ))
+
     # обновить игры
     router.callback_query.register(handle_refresh_games_callback, GamesCallback.filter(
         F.action == 'refresh'
     ))
+
+    # отменить игру
+    router.callback_query.register(handle_cancel_game_callback, GamesCallback.filter(
+        F.action == 'cancel'
+    ))
+
+    # навигация по страницам с играми
+    router.callback_query.register(handle_game_pages_navigation_callback, GamePagesNavigationCallback.filter())
+
     # создать игру
     router.callback_query.register(handle_create_game_callback, GamesCallback.filter(
         (F.action == 'create') & ~F.game_type & ~F.game_number
@@ -190,5 +254,5 @@ def register_play_handlers(router: Router):
     # назад
     router.message.register(handle_bet_amount_message, UserStates.EnterBet.wait_for_bet_amount)
 
-    router.callback_query.register(handle_back_in_play_callback, NavigationCallback.filter(
+    router.callback_query.register(handle_back_in_play_callback, MenuNavigationCallback.filter(
         (F.branch == 'game_strategies') & ~F.option))

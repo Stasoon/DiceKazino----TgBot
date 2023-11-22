@@ -77,10 +77,27 @@ async def get_chat_available_games(chat_id: int) -> Union[List[Game], None]:
         return None
 
 
-async def get_bot_available_games(game_category: GameCategory) -> List[Game]:
-    """Возвращает игры конкретной категории, созданные в боте"""
+async def get_bot_available_games(
+        game_category: GameCategory,
+        offset: int = 0,
+        limit: int = 8,
+        for_user_id: int = None
+) -> List[Game]:
+    """Возвращает доступные для вступления игры конкретной категории, созданные в боте"""
     # Немного костыльно, тк chat_id игр, созданных в боте равен id юзера, а оно всегда положительное
-    return await Game.filter(status=GameStatus.WAIT_FOR_PLAYERS, category=game_category, chat_id__gt=0)
+    games = await Game.filter(
+        status=GameStatus.WAIT_FOR_PLAYERS, category=game_category, chat_id__gt=0
+    ).offset(offset).limit(limit)
+
+    # Если есть игра пользователя, переместите ее в начало списка
+    if for_user_id and len(games) != 0:
+        user_game = await get_user_unfinished_game(telegram_id=for_user_id)
+        if user_game and user_game.category == game_category:
+            if user_game in games:
+                games.remove(user_game)
+            games.insert(0, user_game)
+
+    return games
 
 
 async def get_user_unfinished_game(telegram_id: int) -> Game | None:

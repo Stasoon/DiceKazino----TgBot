@@ -5,11 +5,11 @@ from tortoise.functions import Sum, Count
 
 from settings import Config
 from .referral_bonuses import accrue_referral_bonus
-from ..models import User, Winning, Game
+from ..models import User, Winning
 from src.misc import GameCategory
 
 
-async def accrue_winnings(winner_telegram_id: int, amount: float, game: Game = None) -> float:
+async def accrue_winnings(winner_telegram_id: int, amount: float, game_category: GameCategory) -> float:
     """
     Начисление выигрыша победителю и процента пригласившему.
     Возвращает выигрыш с учётом комиссии
@@ -23,11 +23,10 @@ async def accrue_winnings(winner_telegram_id: int, amount: float, game: Game = N
     user = await User.get(telegram_id=winner_telegram_id)
     user.balance += amount_with_commission
     await user.save()
-    await Winning.create(game=game, user=user, amount=amount_with_commission)
+    await Winning.create(user=user, amount=amount_with_commission, game_category=game_category)
 
     # увеличиваем баланс того, кто пригласил
     await accrue_referral_bonus(referred_user_id=winner_telegram_id, game_winning_amount=amount_with_commission)
-
     return float(amount_with_commission)
 
 
@@ -41,7 +40,7 @@ async def get_top_winners_by_amount(category: GameCategory, days_back: int = Non
 
     top_players = await User.filter(
         user_winnings__timestamp__gte=start_date,
-        user_winnings__game__category=category
+        user_winnings__game_category=category
     ).annotate(
         winnings_amount=Sum('user_winnings__amount')
     ).order_by('-winnings_amount').limit(limit)

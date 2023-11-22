@@ -5,9 +5,40 @@ from aiogram.filters import CommandObject
 from aiogram.types import Message, CallbackQuery
 
 from settings import Config
-from src.database import games, users, Game
+from src.database import games, users, transactions, Game
 from src.messages import InputErrors, BalanceErrors, GameErrors
 from src.misc import GameStatus
+
+
+async def check_rights_and_cancel_game(event: CallbackQuery | Message, game: Game):
+    """ Проверяет, может ли игрок отменить игру. Если может, возвращает ставки и удаляет игру """
+    user_id = event.from_user.id
+    if isinstance(event, CallbackQuery): message = event.message
+    else: message = event
+
+    # игра не найдена
+    if not game:
+        await event.answer(text=GameErrors.get_game_is_finished(), parse_mode='HTML')
+        return
+    # не является создателем
+    elif user_id != (await game.creator.get()).telegram_id:
+        await event.answer(text=GameErrors.get_not_creator_of_game(), parse_mode='HTML')
+        return
+    # игра начата
+    elif game.status != GameStatus.WAIT_FOR_PLAYERS:
+        await event.answer(text=GameErrors.get_cannot_delete_game_message_after_start(), parse_mode='HTML')
+        return
+    # если всё хорошо, отменяем игру
+    else:
+        if game.message_id:
+            try:
+                await event.bot.delete_message(chat_id=message.chat.id, message_id=game.message_id)
+            except TelegramBadRequest:
+                pass
+        await games.cancel_game(game)
+
+        for player_id in await games.get_player_ids_of_game(game):
+            await transactions.make_bet_refund(player_id=player_id, amount=game.bet, game=game)
 
 
 def validate_create_game_cmd(args_count: int = 1, min_bet: int = 30):

@@ -6,7 +6,7 @@ from settings import Config
 from src.database import transactions
 from src.keyboards.user import UserPaymentKeyboards, UserMenuKeyboards
 from src.messages import UserPaymentMessages, BalanceErrors, InputErrors, PaymentErrors
-from src.misc import (NavigationCallback, BalanceTransactionCallback, UserStates,
+from src.misc import (MenuNavigationCallback, BalanceTransactionCallback, UserStates,
                       PaymentCheckCallback, PaymentMethod)
 from src.utils import cryptobot, post_payment, logger
 
@@ -191,7 +191,7 @@ async def handle_check_cryptobot_payment(callback: CallbackQuery, callback_data:
 
 def register_deposit_handlers(router: Router):
     # опция Пополнить
-    router.callback_query.register(handle_deposit_callback, NavigationCallback.filter(
+    router.callback_query.register(handle_deposit_callback, MenuNavigationCallback.filter(
         (F.branch == 'profile') & (F.option == 'deposit')))
 
     # нажатие на метод пополнения

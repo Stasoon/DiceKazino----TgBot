@@ -23,12 +23,13 @@ class Config:
         min_deposit_amount: Final[float] = float(10)
 
     class Games:
-        GAME_CHAT_ID: Final = int(os.getenv('GAME_CHAT_ID'))
-        EVEN_UNEVEN_CHAT_ID: Final = int(os.getenv('EVEN_UNEVEN_CHAT_ID'))
-        CARD_IMAGES_PATH: str = 'cards'
+        GAME_CHAT_ID: Final[int] = int(os.getenv('GAME_CHAT_ID'))
+        EVEN_UNEVEN_CHAT_ID: Final[int] = int(os.getenv('EVEN_UNEVEN_CHAT_ID'))
+        CARD_IMAGES_PATH: Final[str] = 'cards'
         min_bet_amount: Final[float] = float(30)
 
     class Database:
-        DB_URL: Final = os.getenv('DB_URL')
+        POSTGRES_URL: Final[str] = os.getenv('POSTGRES_URL')
+        REDIS_URL: Final[str] = os.getenv('REDIS_URL')
 
     DEBUG: Final = bool(os.getenv('DEBUG'))

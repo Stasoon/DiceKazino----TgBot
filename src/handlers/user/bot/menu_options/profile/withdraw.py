@@ -6,7 +6,7 @@ from settings import Config
 from src.database import users
 from src.keyboards.user import UserMenuKeyboards, UserPaymentKeyboards
 from src.messages import UserPaymentMessages, InputErrors, BalanceErrors
-from src.misc import (NavigationCallback, BalanceTransactionCallback, UserStates, PaymentMethod,
+from src.misc import (MenuNavigationCallback, BalanceTransactionCallback, UserStates, PaymentMethod,
                       ConfirmWithdrawRequisitesCallback)
 from src.utils import post_payment
 from src.database.transactions import withdraw_balance
@@ -136,7 +136,7 @@ async def handle_confirm_withdraw_callback(callback: CallbackQuery, callback_dat
 
 def register_withdraw_handlers(router: Router):
     # опция Вывод
-    router.callback_query.register(handle_withdraw_callback, NavigationCallback.filter(
+    router.callback_query.register(handle_withdraw_callback, MenuNavigationCallback.filter(
         (F.branch == 'profile') & (F.option == 'withdraw')))
 
     router.callback_query.register(handle_show_withdraw_method_callbacks, BalanceTransactionCallback.filter(

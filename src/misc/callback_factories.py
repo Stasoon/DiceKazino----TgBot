@@ -21,13 +21,19 @@ class GamesCallback(CallbackData, prefix="games"):
     game_category: Optional[GameCategory] = None  \n
     game_type: Optional[GameType] = None
     """
-    action: Literal['join', 'show', 'refresh', 'create', 'stats']
+    action: Literal['create', 'show', 'refresh', 'stats', 'cancel', 'join']
     game_number: Optional[int] = None
     game_category: Optional[GameCategory] = None
     game_type: Optional[GameType] = None
 
 
-class NavigationCallback(CallbackData, prefix="nav"):
+class GamePagesNavigationCallback(CallbackData, prefix='games_nav'):
+    direction: Literal['prev', 'next']
+    category: GameCategory
+    current_page: int = 0
+
+
+class MenuNavigationCallback(CallbackData, prefix="nav"):
     """
     Отвечает за навигацию в основных ветках меню. Если option не задана, возврат в ветку
     branch: str

@@ -1,16 +1,22 @@
+import json
+
 import asyncio
+import os.path
 
 from aiogram import Bot
 from aiogram.types import Message
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.enums.dice_emoji import DiceEmoji
 
-from .logging import logger
+from src.utils.logging import logger
 from src.database.games import even_uneven
 from src.database import transactions
 from src.keyboards.user.games import EvenUnevenKeyboards
-from src.misc.enums.games_enums import EvenUnevenCoefficients
-from src.messages.user.games import EvenUnevenMessages
+from src.misc.enums.games_enums import EvenUnevenCoefficients, GameCategory
+from src.messages.user.games import HitOrMissMessages
+
+
+data_file_name = 'even_uneven_data.json'
 
 
 def get_formatted_time(seconds: int = 0):
@@ -31,7 +37,7 @@ def get_won_bet_options(dice_values) -> str:
         won_options += 'D'
     if a % 2 == 0 and b % 2 == 0:
         won_options += 'E'
-    if a % 2 != 0 or b % 2 != 0:
+    if a % 2 != 0 and b % 2 != 0:
         won_options += 'F'
     if a == b:
         won_options += 'G'
@@ -41,9 +47,10 @@ def get_won_bet_options(dice_values) -> str:
 
 
 class EvenUneven:
-    def __init__(self, bot: Bot, chat_id: int):
+    def __init__(self, bot: Bot, chat_id: int, round_number: int):
         self.bot = bot
         self.chat_id = chat_id
+        self.round_number = round_number
 
         self.__round_message_ids = []
         self.markup = None
@@ -79,25 +86,28 @@ class EvenUneven:
 
             if bet.option in won_bet_options:
                 win_amount = await transactions.accrue_winnings(
-                    winner_telegram_id=player_id,
+                    winner_telegram_id=player_id, game_category=GameCategory.EVEN_UNEVEN,
                     amount=bet.amount * EvenUnevenCoefficients.get(bet.option)
                 )
                 winnings_sum += win_amount
                 text = f'Вы выиграли {win_amount}'
-                logger.info(f'{player_id} {bet.amount} +++выигрыш {EvenUnevenCoefficients.get(bet.option)} {bet.option}')
             else:
                 text = f'<b>🎲 Вы проиграли {bet.amount}₽</b>'
-                logger.info(f'{player_id} {bet.amount} ---проигрыш {bet.option}')
             await self.bot.send_message(chat_id=player_id, text=text, parse_mode='HTML')
 
         return winnings_sum
 
+    async def edit_stats_message(self):
+        text = await HitOrMissMessages.get_top()
+        stats_msg = await self.bot.send_message(chat_id=self.chat_id, text=text, parse_mode='HTML')
+        self.__round_message_ids.append(stats_msg.message_id)
+
     async def __send_round_start_and_start_timer(self, round_number: int):
-        # seconds_to_wait = randint(5, 8) * 60 - 1
-        seconds_to_wait = 40
+        # seconds_to_wait = randint(2, 4) * 60 - 1
+        seconds_to_wait = 20
 
         # Отправляем сообщение
-        template = EvenUnevenMessages.get_timer_template(round_number=round_number)
+        template = HitOrMissMessages.get_timer_template(round_number=round_number)
         bot_username = (await self.bot.get_me()).username
         self.markup = EvenUnevenKeyboards.get_bet_options(round_number=round_number, bot_username=bot_username)
 
@@ -106,7 +116,12 @@ class EvenUneven:
             text=template.format(get_formatted_time(seconds_to_wait)),
             reply_markup=self.markup
         )
-        await even_uneven.set_round_message(message_id=msg.message_id)
+
+        with open(data_file_name, 'r') as file:
+            data = json.load(file)
+        data['message_id'] = msg.message_id
+        with open(data_file_name, 'w') as file:
+            json.dump(data, file, indent=4)
 
         # Запускаем таймер
         await self.__timer(
@@ -132,17 +147,7 @@ class EvenUneven:
 
     async def process_round(self):
         # Создаём раунд
-        current_round = await even_uneven.get_current_round()
-        if current_round and current_round.message_id:
-            try:
-                await self.bot.delete_message(chat_id=self.chat_id, message_id=current_round.message_id)
-            except Exception:
-                pass
-            round_number = current_round.number
-        else:
-            round_number = await even_uneven.create_round_and_get_number()
-
-        await self.__send_round_start_and_start_timer(round_number)
+        await self.__send_round_start_and_start_timer(self.round_number)
 
         # Бросаем кости и получаем победившие ставки
         results = await self.__send_dices_and_get_values()
@@ -160,16 +165,38 @@ class EvenUneven:
 
 
 async def start_even_uneven_loop(bot: Bot, channel_id: int):
+    if not os.path.exists(data_file_name):
+        with open(data_file_name, 'w') as data_file:
+            json.dump(
+                obj={
+                    'round_number': 1,
+                    'stats_message_id': None,
+                    'message_id': None,
+                    'chat_id': channel_id
+                },
+                fp=data_file, indent=4
+            )
+
     while True:
-        even_uneven_round = EvenUneven(bot=bot, chat_id=channel_id)
+        with open(data_file_name, 'r') as data_file:
+            data = json.load(data_file)
+
+        even_uneven_round = EvenUneven(
+            bot=bot, chat_id=channel_id,
+            round_number=data.get('round_number')
+        )
 
         try:
+            await even_uneven_round.edit_stats_message()
             await even_uneven_round.process_round()
         except Exception as e:
             logger.error(e)
 
         # Ждём, чтобы игроки увидели результаты
-        seconds_btw_rounds = 40
+        seconds_btw_rounds = 10
         await asyncio.sleep(seconds_btw_rounds)
 
+        data['round_number'] += 1
+        with open(data_file_name, 'w') as file:
+            json.dump(obj=data, fp=file, indent=4)
         await even_uneven_round.clear_round_messages()

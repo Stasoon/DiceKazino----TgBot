@@ -1,5 +1,3 @@
-from datetime import timedelta, datetime, timezone
-
 from aiogram import Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters.command import Command
@@ -9,6 +7,7 @@ from src.database import users, games, transactions
 from src.messages import GameErrors
 from src.messages.user import UserMenuMessages, get_short_game_info_text
 from src.misc import GameStatus
+from src.utils.game_validations import check_rights_and_cancel_game
 
 
 async def handle_profile_command(message: Message):
@@ -62,33 +61,7 @@ async def handle_delete_game_command(message: Message):
         return
 
     game = await games.get_game_by_message_id(message.reply_to_message.message_id)
-
-    # игра не найдена
-    if not game:
-        await message.answer(text=GameErrors.get_game_is_finished(), parse_mode='HTML')
-        return
-
-    minutes_while_cant_delete_game = 30
-    time_difference = datetime.now().astimezone(game.start_time.tzinfo) - game.start_time
-    # не является создателем
-    if message.from_user.id != (await game.creator.get()).telegram_id:
-        await message.answer(text=GameErrors.get_not_creator_of_game(), parse_mode='HTML')
-    # # игра начата
-    # elif game.status != GameStatus.WAIT_FOR_PLAYERS:
-    #     await message.answer(text=GameErrors.get_cannot_delete_game_message_after_start(), parse_mode='HTML')
-    # # не прошло N минут
-    # elif time_difference < timedelta(minutes=minutes_while_cant_delete_game):
-    #     await message.answer(text=GameErrors.get_delete_game_time_limit(), parse_mode='HTML')
-    # если всё хорошо, удаляем игру
-    else:
-        try:
-            await message.bot.delete_message(chat_id=message.chat.id, message_id=game.message_id)
-        except TelegramBadRequest:
-            pass
-        await games.cancel_game(game)
-
-        for player_id in await games.get_player_ids_of_game(game):
-            await transactions.make_bet_refund(player_id=player_id, amount=game.bet, game=game)
+    await check_rights_and_cancel_game(event=message, game=game)
 
 
 def register_other_commands_handlers(router: Router):

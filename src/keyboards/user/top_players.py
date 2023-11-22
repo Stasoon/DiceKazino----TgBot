@@ -1,7 +1,7 @@
 from aiogram.utils.keyboard import InlineKeyboardMarkup, InlineKeyboardBuilder
 
 from src.database import get_top_winners_by_count
-from src.misc import NavigationCallback
+from src.misc import MenuNavigationCallback
 
 
 async def get_top_markup(stars: list, days: int = None):
@@ -19,10 +19,10 @@ async def get_top_markup(stars: list, days: int = None):
 
     nav_builder = InlineKeyboardBuilder()
     nav_builder.button(text=f'{stars[0]}За всё время',
-                       callback_data=NavigationCallback(branch='top_players', option='all'))
+                       callback_data=MenuNavigationCallback(branch='top_players', option='all'))
     nav_builder.button(text=f'{stars[1]}За месяц',
-                       callback_data=NavigationCallback(branch='top_players', option='month'))
-    nav_builder.button(text=f'{stars[2]}За сутки', callback_data=NavigationCallback(branch='top_players', option='day'))
+                       callback_data=MenuNavigationCallback(branch='top_players', option='month'))
+    nav_builder.button(text=f'{stars[2]}За сутки', callback_data=MenuNavigationCallback(branch='top_players', option='day'))
     nav_builder.adjust(3)
 
     builder.attach(nav_builder)

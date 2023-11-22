@@ -4,7 +4,7 @@ from aiogram.types import CallbackQuery, Message
 
 from src.keyboards import UserTopPlayersKeyboards
 from src.messages import UserMenuMessages
-from src.misc import NavigationCallback
+from src.misc import MenuNavigationCallback
 
 
 async def handle_top_player_button(message: Message):
@@ -15,7 +15,7 @@ async def handle_top_player_button(message: Message):
     )
 
 
-async def handle_top_players_callback(callback: CallbackQuery, callback_data: NavigationCallback):
+async def handle_top_players_callback(callback: CallbackQuery, callback_data: MenuNavigationCallback):
     # костыли, но выглядит красиво
     markup = None
     if callback_data.option == 'all':
@@ -40,5 +40,5 @@ async def handle_top_players_callback(callback: CallbackQuery, callback_data: Na
 def register_top_players_handlers(router: Router):
     router.message.register(handle_top_player_button, F.text == '🔝 Топ игроков')
 
-    router.callback_query.register(handle_top_players_callback, NavigationCallback.filter(
+    router.callback_query.register(handle_top_players_callback, MenuNavigationCallback.filter(
         (F.branch == 'top_players') & F.option))

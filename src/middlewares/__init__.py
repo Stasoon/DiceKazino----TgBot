@@ -1,1 +1,1 @@
-from .throttle import ThrottlingMiddleware
+from .throttling import ThrottlingMiddleware

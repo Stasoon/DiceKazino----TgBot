@@ -39,7 +39,7 @@ class BasicGameStrategy(GameStrategy):
             winner_id = (await max_move.player.get()).telegram_id
             # Начисляем выигрыш на баланс
             await transactions.accrue_winnings(
-                game=game, winner_telegram_id=winner_id,
+                game_category=game.category, winner_telegram_id=winner_id,
                 amount=game.bet * win_coefficient
             )
 
@@ -50,10 +50,6 @@ class BasicGameStrategy(GameStrategy):
                                                                     game.bet * win_coefficient)
         markup = UserMenuKeyboards.get_main_menu()
         await GameMessageSender(bot, game).send(text, markup=markup)
-
-    @classmethod
-    def register_moves_handlers(cls, router: Router):
-        router.message.register(cls.handle_game_move_message, F.dice)
 
     @classmethod
     async def handle_game_move_message(cls, message: Message):
@@ -83,3 +79,7 @@ class BasicGameStrategy(GameStrategy):
             await game_scores.add_player_move_if_not_moved(
                 game=game, player_telegram_id=player_telegram_id, move_value=dice_value
             )
+
+    @classmethod
+    def register_moves_handlers(cls, router: Router):
+        router.message.register(cls.handle_game_move_message, F.dice)

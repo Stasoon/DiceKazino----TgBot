@@ -4,7 +4,7 @@ from aiogram.types import CallbackQuery, Message
 
 from src.keyboards.user import UserMenuKeyboards
 from src.messages.user import UserMenuMessages
-from src.misc import NavigationCallback
+from src.misc import MenuNavigationCallback
 
 
 # region Utils

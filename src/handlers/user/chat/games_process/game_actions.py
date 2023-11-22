@@ -79,15 +79,15 @@ async def finish_game(game: Game, message: Message):
         # Получаем победителя
         winner_id = (await max_move.player.get()).telegram_id
         # Начисляем выигрыш на баланс
-        await transactions.accrue_winnings(game=game, winner_telegram_id=winner_id, amount=game.bet * win_coefficient)
+        await transactions.accrue_winnings(
+            game_category=game.category, winner_telegram_id=winner_id, amount=game.bet * win_coefficient
+        )
 
     seconds_to_wait = 3
     await asyncio.sleep(seconds_to_wait)
 
-    await message.answer(
-        text=await UserPublicGameMessages.get_game_in_chat_finish(game, winner_id, game_moves, game.bet * win_coefficient),
-        parse_mode='HTML'
-    )
+    text = await UserPublicGameMessages.get_game_in_chat_finish(game, winner_id, game_moves, game.bet * win_coefficient)
+    await message.answer(text=text, parse_mode='HTML')
 
 # endregion Utils
 

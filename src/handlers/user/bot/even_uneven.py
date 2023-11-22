@@ -1,3 +1,6 @@
+# from dataclasses import dataclass
+# from enum import Enum
+
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -7,6 +10,18 @@ from src.database.games.even_uneven import add_player_bet
 from src.keyboards.user.games import EvenUnevenKeyboards
 from src.misc import UserStates
 from src.utils.game_validations import validate_and_extract_bet_amount
+
+
+# @dataclass
+# class EvenUnevenOptionData:
+#     short_descript: str
+#     full_descript: str
+#     coeff: float
+#     condition: Callable
+#
+#
+# class EvenUnevenOption:
+#     A = EvenUnevenOptionData(, 'одно из чисел чётное', lambda a,b: a%2 == 0 or b%2 == 0)
 
 
 def get_bet_option_description(option: str):
@@ -39,7 +54,6 @@ async def show_bet_entering(message: Message, state: FSMContext, round_number: i
     await state.set_state(UserStates.EnterEvenUnevenBet.wait_for_bet)
 
 
-from loguru import logger
 async def handle_bet_amount_message(message: Message, state: FSMContext):
     """Обработка сообщения с суммой ставки"""
     data = await state.get_data()
@@ -59,8 +73,6 @@ async def handle_bet_amount_message(message: Message, state: FSMContext):
         f'Вы поставили {bet_amount:.2f} руб на: {option_description}'
     )
 
-    logger.info(f"Игрок {message.from_user.full_name}; Ставка:{bet_amount}; Опция: {option_description} ({data.get('bet_option')})")
-
     await state.clear()
 
 
@@ -70,7 +82,9 @@ async def handle_cancel_bet_callback(callback: CallbackQuery, state: FSMContext)
 
 
 def register_even_uneven_handlers(router: Router):
+    # Сообщение со ставкой
     router.message.register(handle_bet_amount_message, UserStates.EnterEvenUnevenBet.wait_for_bet)
+    # Отмена ставки
     router.callback_query.register(handle_cancel_bet_callback,
                                    F.data == 'cancel_even_uneven_bet',
                                    UserStates.EnterEvenUnevenBet.wait_for_bet)
