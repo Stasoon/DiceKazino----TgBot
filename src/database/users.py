@@ -1,4 +1,4 @@
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Union
 
 from tortoise.exceptions import DoesNotExist
 
@@ -11,7 +11,8 @@ async def create_user_if_not_exists(
     first_name: str, username: str,
     referrer_telegram_id: int = None,
     balance: int = 0
-) -> bool:
+) -> User | None:
+    """ Создаёт юзера, если он не существует. Если юзер был создан, возвращает его. Иначе None """
     defaults = {'name': first_name, 'username': username, 'balance': balance, 'referred_by_id': referrer_telegram_id}
     user, created = await User.get_or_create(telegram_id=telegram_id, defaults=defaults)
 
@@ -21,12 +22,12 @@ async def create_user_if_not_exists(
         if not user.username: user.username = username
         await user.save()
 
-    return True if created else False
+    return created if created else None
 
 
 # Read
 
-async def get_user_or_none(telegram_id: int) -> User | None:
+async def get_user_or_none(telegram_id: int) -> Union[User, None]:
     return await User.get_or_none(telegram_id=telegram_id)
 
 

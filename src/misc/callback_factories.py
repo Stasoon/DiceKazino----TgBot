@@ -2,7 +2,7 @@ from typing import Optional, Literal
 
 from aiogram.filters.callback_data import CallbackData
 
-from .enums import PaymentMethod, GameType, GameCategory
+from .enums import DepositMethod, WithdrawMethod, GameType, GameCategory
 
 
 class BlackJackCallback(CallbackData, prefix='BJ'):
@@ -33,6 +33,19 @@ class GamePagesNavigationCallback(CallbackData, prefix='games_nav'):
     current_page: int = 0
 
 
+class BandCallback(CallbackData, prefix='band'):
+    """ Управление своей бандой """
+    band_id: int
+    action: Optional[str] = None
+
+
+class BandMemberCallback(CallbackData, prefix='band_member'):
+    """ Управление участниками банды """
+    band_id: int
+    user_id: int
+    action: str = 'kick'
+
+
 class MenuNavigationCallback(CallbackData, prefix="nav"):
     """
     Отвечает за навигацию в основных ветках меню. Если option не задана, возврат в ветку
@@ -43,16 +56,21 @@ class MenuNavigationCallback(CallbackData, prefix="nav"):
     option: Optional[str] = None
 
 
-class BalanceTransactionCallback(CallbackData, prefix='balance_transaction'):
+class WithdrawCallback(CallbackData, prefix='withdraw'):
     """Отвечает за выбор метода пополнения/депозита"""
-    transaction_type: Literal['deposit', 'withdraw']
-    method: PaymentMethod
+    method: WithdrawMethod
     currency: Optional[str] = None
 
 
-class PaymentCheckCallback(CallbackData, prefix='check_payment'):
+class DepositCallback(CallbackData, prefix='deposit'):
+    """Отвечает за выбор метода пополнения/депозита"""
+    method: DepositMethod
+    currency: Optional[str] = None
+
+
+class DepositCheckCallback(CallbackData, prefix='check_payment'):
     """Отвечает за кнопку проверки платежа при автооплате"""
-    method: PaymentMethod
+    method: DepositMethod
     invoice_id: int
 
 

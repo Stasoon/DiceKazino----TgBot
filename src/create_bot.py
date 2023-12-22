@@ -5,7 +5,7 @@ from aiogram.fsm.storage.redis import RedisStorage
 from settings import Config
 
 
-bot = Bot(token=Config.Bot.TOKEN)
+bot = Bot(token=Config.Bot.TOKEN, parse_mode='HTML')
 
 storage = MemoryStorage() if not Config.Database.REDIS_URL else RedisStorage.from_url(url=Config.Database.REDIS_URL)
 dp = Dispatcher(storage=storage)

@@ -3,53 +3,113 @@ import asyncio
 from aiogram import Router, F, Bot
 from aiogram.types import Message
 
-from src.database import games, Game, transactions
+from src.database import games, Game, transactions, PlayerScore, User
 from src.database.games import game_scores
 from src.handlers.user.bot.game_strategies.game_strategy import GameStrategy
 from src.keyboards import UserMenuKeyboards, UserPrivateGameKeyboards
 from src.messages import UserPublicGameMessages
+from src.messages.user.games.basketball import BasketballMessages
+from src.messages.user.games.football import FootballMessages
+from src.messages.user.games.game_messages_base import BotGamesMessagesBase
+from src.misc import GameType, GameStatus
 from src.utils.game_messages_sender import GameMessageSender
+
+
+def get_message_instance(game_type: GameType) -> BotGamesMessagesBase:
+    match game_type:
+        case GameType.BASKETBALL:
+            return BasketballMessages
+        case GameType.FOOTBALL:
+            return FootballMessages
+        case _:
+            return UserPublicGameMessages
 
 
 class BasicGameStrategy(GameStrategy):
 
     @staticmethod
     async def start_game(bot: Bot, game: Game):
-        text = 'Нажмите на клавиатуру, чтобы походить'
+        msg_instance = get_message_instance(game_type=game.game_type)
+        text = msg_instance.get_game_started()
         markup = UserPrivateGameKeyboards.get_dice_kb(game.game_type.value)
         await GameMessageSender(bot, game).send(text, markup=markup)
 
     @staticmethod
-    async def finish_game(bot: Bot, game: Game):
+    async def __make_refund_for_tie(game: Game, game_moves: list[PlayerScore]) -> None:
+        # Возвращаем деньги участникам
+        for move in game_moves:
+            player = await move.player.get()
+            await transactions.make_bet_refund(game=game, player_id=player.telegram_id, amount=game.bet)
+
+    @staticmethod
+    async def __accrue_players_winnings_and_get_amount(game: Game, win_coefficient: float, winners: list[User]) -> float:
+        # Начисляем выигрыши победителям
+        winning_with_commission = None
+        for winner in winners:
+            winning_with_commission = await transactions.accrue_winnings(
+                game_category=game.category, winner_telegram_id=winner.telegram_id,
+                amount=game.bet * win_coefficient
+            )
+        return winning_with_commission
+
+    @staticmethod
+    async def send_results(
+            bot: Bot, game: Game, game_moves: list[PlayerScore], winning_amount: float, winners: list[User]
+    ):
+        # Отправляем результат игры в чат
+        text = await UserPublicGameMessages.get_game_in_chat_finish(
+            game=game, winners=winners, game_moves=game_moves, win_amount=winning_amount
+        )
+        # Отправляем результат игрокам
+        markup = UserMenuKeyboards.get_main_menu()
+        await GameMessageSender(bot, game).send(text, markup=markup)
+
+        # Отправляем сообщение о выигрыше / проигрыше
+        msg_instance = get_message_instance(game_type=game.game_type)
+        tie_text = msg_instance.get_tie() if not winners else None
+        for move in game_moves:
+            player = (await move.player.get())
+            if tie_text:
+                message_text = tie_text
+            elif player in winners:
+                message_text = msg_instance.get_player_won(player_name=player.name, win_amount=winning_amount)
+            else:
+                message_text = msg_instance.get_player_loose()
+
+            if message_text:
+                await bot.send_message(chat_id=player.telegram_id, text=message_text)
+
+    @classmethod
+    async def finish_game(cls, bot: Bot, game: Game):
+        if game.status == GameStatus.FINISHED:
+            return
+
         win_coefficient = 2
+
         game_moves = await game_scores.get_game_moves(game)
         await games.finish_game(game)
         await game_scores.delete_game_scores(game)
-        winner_id = None
 
+        winners = []
+        winning_with_commission = None
         max_move = max(game_moves, key=lambda move: move.value)
 
         if all(move.value == max_move.value for move in game_moves):  # Если значения одинаковы (ничья)
-            # Возвращаем деньги участникам
-            for move in game_moves:
-                player = await move.player.get()
-                await transactions.make_bet_refund(game=game, player_id=player.telegram_id, amount=game.bet)
-        else:  # значения разные
-            # Получаем победителя
-            winner_id = (await max_move.player.get()).telegram_id
-            # Начисляем выигрыш на баланс
-            await transactions.accrue_winnings(
-                game_category=game.category, winner_telegram_id=winner_id,
-                amount=game.bet * win_coefficient
-            )
+            await cls.__make_refund_for_tie(game=game, game_moves=game_moves)
+        else:  # значения разные (есть победитель)
+            # формируем список победителей
+            winners = [await move.player.get() for move in game_moves if move.value == max_move.value]
+            # начисляем выигрыши
+            winning_with_commission = await cls.__accrue_players_winnings_and_get_amount(
+                game=game, winners=winners, win_coefficient=win_coefficient)
 
+        # Ждём окончания анимации
         seconds_to_wait = 3
         await asyncio.sleep(seconds_to_wait)
 
-        text = await UserPublicGameMessages.get_game_in_chat_finish(game, winner_id, game_moves,
-                                                                    game.bet * win_coefficient)
-        markup = UserMenuKeyboards.get_main_menu()
-        await GameMessageSender(bot, game).send(text, markup=markup)
+        await cls.send_results(
+            bot=bot, game=game, game_moves=game_moves, winners=winners, winning_amount=winning_with_commission
+        )
 
     @classmethod
     async def handle_game_move_message(cls, message: Message):
@@ -63,7 +123,7 @@ class BasicGameStrategy(GameStrategy):
         if game and dice.emoji == game.game_type.value:
             await cls.process_player_move(game, message)
 
-        # если все походили, ждём окончания анимации и заканчиваем игру
+        # если все походили заканчиваем игру
         if len(await game_scores.get_game_moves(game)) == game.max_players:
             await cls.finish_game(bot=message.bot, game=game)
 

@@ -25,7 +25,7 @@ async def set_bot_commands():
 
 async def on_startup():
     # Запуск базы данных
-    await start_database(db_url=Config.Database.POSTGRES_URL)
+    await start_database(db_url=Config.Database.DATABASE_URL)
 
     # Установка команд бота
     await set_bot_commands()

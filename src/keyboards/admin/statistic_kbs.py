@@ -1,4 +1,4 @@
-from aiogram.utils.keyboard import KeyboardButton
+from aiogram.utils.keyboard import KeyboardButton, InlineKeyboardBuilder, InlineKeyboardMarkup
 
 from .admin_keyboards import AdminKeyboardBase
 
@@ -9,5 +9,12 @@ class StatisticsKbs(AdminKeyboardBase):
         return KeyboardButton(text='📊 Статистика 📊')
 
     @staticmethod
-    def get_():
-        return 
+    def get_() -> InlineKeyboardMarkup:
+        builder = InlineKeyboardBuilder()
+
+        builder.button(text='За день')
+        builder.button(text='За неделю')
+        builder.button(text='За месяц')
+        builder.button(text='За всё время')
+        builder.adjust(2)
+        return builder.as_markup()

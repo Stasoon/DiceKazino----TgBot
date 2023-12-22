@@ -31,14 +31,14 @@ async def process_mini_game_result(user_message: Message, game: Game, win_coeffi
     """В win_coefficient передать коэффициент выигрыша, или 0 при проигрыше"""
     if win_coefficient:
         winning_amount = game.bet * win_coefficient
-        await user_message.answer(text=await UserPublicGameMessages.get_mini_game_victory(game, winning_amount),
+        await user_message.answer(text=UserPublicGameMessages.get_mini_game_victory(game, winning_amount),
                                   parse_mode='HTML')
         await games.finish_game(game)
         await transactions.accrue_winnings(
             game_category=game.category, winner_telegram_id=user_message.from_user.id, amount=winning_amount
         )
     else:
-        await user_message.answer(await UserPublicGameMessages.get_mini_game_loose(game=game), parse_mode='HTML')
+        await user_message.answer(UserPublicGameMessages.get_mini_game_loose(game=game), parse_mode='HTML')
         await games.finish_game(game)
 
 # endregion

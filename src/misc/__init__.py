@@ -1,6 +1,6 @@
-from .enums import GameCategory, GameType, GameStatus, PaymentMethod
+from .enums import GameCategory, GameType, GameStatus, DepositMethod, WithdrawMethod
 from .callback_factories import (
-    GamesCallback, GamePagesNavigationCallback, MenuNavigationCallback, BalanceTransactionCallback,
-    PaymentCheckCallback, AdminValidatePaymentCallback, ConfirmWithdrawRequisitesCallback
+    GamesCallback, GamePagesNavigationCallback, MenuNavigationCallback, DepositCallback, WithdrawCallback,
+    DepositCheckCallback, AdminValidatePaymentCallback, ConfirmWithdrawRequisitesCallback
 )
-from .states import AdminStates, UserStates
+from .states import AdminStates

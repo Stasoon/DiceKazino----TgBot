@@ -5,7 +5,7 @@ from PIL.Image import BICUBIC, HAMMING
 from aiogram.types import BufferedInputFile
 
 from src.database import Game
-from ...database.games import playing_cards, game_scores
+from src.database.games import playing_cards, game_scores
 from .base_painter import _GameImagePainter
 
 

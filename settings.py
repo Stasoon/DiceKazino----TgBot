@@ -20,7 +20,7 @@ class Config:
         winning_commission: Final[float] = float(0.05)
 
         min_withdraw_amount: Final[float] = float(50)
-        min_deposit_amount: Final[float] = float(10)
+        min_deposit_amount: Final[float] = float(50)
 
     class Games:
         GAME_CHAT_ID: Final[int] = int(os.getenv('GAME_CHAT_ID'))
@@ -29,7 +29,10 @@ class Config:
         min_bet_amount: Final[float] = float(30)
 
     class Database:
-        POSTGRES_URL: Final[str] = os.getenv('POSTGRES_URL')
+        DATABASE_URL: Final[str] = os.getenv('POSTGRES_URL')
         REDIS_URL: Final[str] = os.getenv('REDIS_URL')
+
+    class Bands:
+        BAND_MEMBERS_LIMIT = 6
 
     DEBUG: Final = bool(os.getenv('DEBUG'))

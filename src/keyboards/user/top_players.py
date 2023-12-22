@@ -12,7 +12,7 @@ async def get_top_markup(stars: list, days: int = None):
     builder = InlineKeyboardBuilder()
     for user in top_players:
         builder.button(
-            text=f"👤 {user.name} | 🏆 {user.wins_count}",
+            text=f"👤 {user.name}  |  🏆 {user.wins_count}",
             url=f"tg://user?id={user.telegram_id}"
         )
     builder.adjust(1)

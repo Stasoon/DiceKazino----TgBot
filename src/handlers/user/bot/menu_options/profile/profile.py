@@ -24,11 +24,6 @@ async def get_profile_message_data(user_id: int) -> dict:
 
 # region Handlers
 
-async def handle_cancel_transaction_button_message(message: Message, state: FSMContext):
-    """Обработка нажатия на кнопку отмены пополнения"""
-    await state.clear()
-    await message.answer('Отменено', reply_markup=UserMenuKeyboards.get_main_menu())
-
 
 async def handle_profile_button(message: Message):
     """Показывает сообщение по нажатию на кнопку Профиль"""
@@ -58,18 +53,20 @@ async def handle_back_in_profile_callbacks(callback: CallbackQuery):
 
 
 def register_profile_handlers(router: Router):
-    # обработка кнопки отмены транзакции
-    router.message.register(handle_cancel_transaction_button_message, F.text == '❌ Отмена')
     # обработка кнопки Профиль
     router.message.register(handle_profile_button, F.text.contains('👤 Профиль'))
 
     # опция Реферальная система
-    router.callback_query.register(handle_referral_system_callback, MenuNavigationCallback.filter(
-        (F.branch == 'profile') & (F.option == 'referral_system')))
+    router.callback_query.register(
+        handle_referral_system_callback,
+        MenuNavigationCallback.filter((F.branch == 'profile') & (F.option == 'referral_system'))
+    )
 
     # кнопка назад в Профиль
-    router.callback_query.register(handle_back_in_profile_callbacks, MenuNavigationCallback.filter(
-        (F.branch == 'profile') & ~F.option))
+    router.callback_query.register(
+        handle_back_in_profile_callbacks,
+        MenuNavigationCallback.filter((F.branch == 'profile') & ~F.option)
+    )
 
     register_deposit_handlers(router)
     register_withdraw_handlers(router)

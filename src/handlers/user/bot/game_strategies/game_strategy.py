@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
 from aiogram import Router, Bot
-from aiogram.types import CallbackQuery
 
 from src.database import Game
 

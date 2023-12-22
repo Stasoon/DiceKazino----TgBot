@@ -3,7 +3,7 @@ import asyncio
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery, ForceReply
 
-from src.database import games, transactions, Game
+from src.database import games, transactions, Game, User
 from src.database.games import game_scores
 from src.handlers.user.bot.game_strategies import BlackJackStrategy, BaccaratStrategy
 from src.messages.user import UserPublicGameMessages
@@ -58,6 +58,17 @@ async def process_player_move(game: Game, message: Message):
         await finish_game(game, message)
 
 
+async def __accrue_players_winnings_and_get_amount(game: Game, win_coefficient: float, winners: list[User]) -> float:
+    # Начисляем выигрыши победителям
+    winning_with_commission = None
+    for winner in winners:
+        winning_with_commission = await transactions.accrue_winnings(
+            game_category=game.category, winner_telegram_id=winner.telegram_id,
+            amount=game.bet * win_coefficient
+        )
+    return winning_with_commission
+
+
 async def finish_game(game: Game, message: Message):
     if game.status == GameStatus.FINISHED:
         return
@@ -66,27 +77,29 @@ async def finish_game(game: Game, message: Message):
     game_moves = await game_scores.get_game_moves(game)
     await games.finish_game(game)
     await game_scores.delete_game_scores(game)
-    winner_id = None
+    winners = []
 
     max_move = max(game_moves, key=lambda move: move.value)
+    winning_with_commission = None
 
-    if all(move.value == max_move for move in game_moves):  # Если значения одинаковы (ничья)
+    if all(move.value == max_move.value for move in game_moves):  # Если значения одинаковы (ничья)
         # Возвращаем деньги участникам
         for move in game_moves:
             player = await move.player.get()
             await transactions.make_bet_refund(player.telegram_id, game=game, amount=game.bet)
     else:  # значения разные
-        # Получаем победителя
-        winner_id = (await max_move.player.get()).telegram_id
-        # Начисляем выигрыш на баланс
-        await transactions.accrue_winnings(
-            game_category=game.category, winner_telegram_id=winner_id, amount=game.bet * win_coefficient
-        )
+        # формируем список победителей
+        winners = [await move.player.get() for move in game_moves if move.value == max_move.value]
+        # начисляем выигрыши
+        winning_with_commission = await __accrue_players_winnings_and_get_amount(
+            game=game, winners=winners, win_coefficient=win_coefficient)
 
     seconds_to_wait = 3
     await asyncio.sleep(seconds_to_wait)
 
-    text = await UserPublicGameMessages.get_game_in_chat_finish(game, winner_id, game_moves, game.bet * win_coefficient)
+    text = await UserPublicGameMessages.get_game_in_chat_finish(
+        game=game, game_moves=game_moves, winners=winners, win_amount=winning_with_commission
+    )
     await message.answer(text=text, parse_mode='HTML')
 
 # endregion Utils

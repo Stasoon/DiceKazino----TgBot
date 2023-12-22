@@ -99,7 +99,7 @@ class BlackJackImagePainter(_GameImagePainter):
                                             points_xy=(150, 415))
             await self.__draw_player_points(player_id=players[1].telegram_id,
                                             player_name=players[1].name,
-                                            points_xy=(self.table_size[0] - 150, 415))
+                                            points_xy=(self.table_size[0] - 150, 420))
 
             # рисуем карты игроков
             middle_x = (self.table_size[0] - self.card_size[0]) // 2

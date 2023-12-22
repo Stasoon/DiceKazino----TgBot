@@ -7,12 +7,16 @@ from src.misc.enums import BaccaratBettingOption
 
 class BaccaratMessages(CreatableGamesMessages):
     @staticmethod
+    def get_game_created(game_number: int):
+        return f'🎴 Игра Baccarat №{game_number} создана!'
+
+    @staticmethod
     def get_category_description(player_name: str) -> str:
-        return ''
+        return '🎴 Baccarat'
 
     @staticmethod
     def ask_for_bet_amount(player_name: str) -> str:
-        return ''
+        return None
 
     @staticmethod
     def get_bet_prompt() -> str:

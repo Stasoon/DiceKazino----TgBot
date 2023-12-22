@@ -3,6 +3,7 @@ from tortoise import fields
 from tortoise.models import Model
 
 from src.misc import GameStatus, GameType, GameCategory
+from src.misc.enums.leagues import BandLeague
 
 
 # region User
@@ -15,9 +16,12 @@ class User(Model):
     referred_by = fields.ForeignKeyField('models.User', related_name='referrals', null=True)
     registration_date = fields.DatetimeField(auto_now_add=True)
 
+    def get_mention_url(self):
+        return f"tg://user?id={self.telegram_id}"
+
     def __str__(self):
         """Возвращает текст со ссылкой-упоминанием юзера в html"""
-        link = f"tg://user?id={self.telegram_id}"
+        link = self.get_mention_url()
         mention = f'{html.link(self.name, link=link)}'
         return mention
 
@@ -25,9 +29,28 @@ class User(Model):
         table = "users"
 
 
+class BandMember(Model):
+    user = fields.ForeignKeyField(model_name="models.User", related_name="band_members")
+    band = fields.ForeignKeyField(model_name="models.Band", related_name="band_members")
+    score = fields.DecimalField(max_digits=12, decimal_places=2, default=0)
+
+
+class Band(Model):
+    id = fields.BigIntField(pk=True, generated=True, unique=True)
+    title = fields.CharField(max_length=50, unique=True)
+    league = fields.IntEnumField(enum_type=BandLeague)
+    creator = fields.ForeignKeyField(model_name="models.User", related_name="created_band", null=True, on_delete=fields.CASCADE)
+    score = fields.DecimalField(max_digits=12, decimal_places=2, default=0)
+    members = fields.ManyToManyField('models.User', through='bandmember', related_name='bands')
+
+    def __str__(self):
+        return f'Банда {self.title}'
+
+
 # endregion
 
 # region Games
+
 
 class Game(Model):
     number = fields.BigIntField(pk=True, generated=True, unique=True)

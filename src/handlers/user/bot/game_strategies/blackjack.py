@@ -228,7 +228,7 @@ class BlackJackStrategy(GameStrategy):
 
         # Дилер добирает карты
         dealer_points = await playing_cards.count_dealer_score(game.number)
-        while dealer_points < 17:
+        while dealer_points <= 16:
             dealer_points = await give_card_to_dealer_and_get_score(game_number=game.number)
 
         # Начисляем выигрыши

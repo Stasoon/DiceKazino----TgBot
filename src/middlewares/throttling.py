@@ -7,7 +7,7 @@ from cachetools import TTLCache
 from src.messages import get_throttling_message
 
 
-SECONDS_BETWEEN_ACTIONS = 0.8
+SECONDS_BETWEEN_ACTIONS = 0.5
 cache = TTLCache(maxsize=3_000, ttl=SECONDS_BETWEEN_ACTIONS)
 
 
@@ -22,8 +22,8 @@ class ThrottlingMiddleware(BaseMiddleware):
             event: Union[Message, CallbackQuery],
             data: Dict[str, Any],
     ) -> Any:
-        if self.on_spam and (event.data or event.text):
-            event_key = event.text[:8] if isinstance(event, Message) else str(event.data)[:8]
+        if self.on_spam and (hasattr(event, 'text') and event.text) or (hasattr(event, 'data') and event.data):
+            event_key = event.text[:8] if isinstance(event, Message) and event.text else str(event.data)[:8]
         else:
             event_key = 'msg' if isinstance(event, Message) else 'callb'
 

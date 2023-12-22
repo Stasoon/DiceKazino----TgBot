@@ -12,3 +12,7 @@ class CreatableGamesMessages(ABC):
     def ask_for_bet_amount(player_name: str) -> str:
         pass
 
+    @staticmethod
+    @abstractmethod
+    def get_game_created(game_number: int):
+        pass

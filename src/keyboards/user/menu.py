@@ -4,7 +4,9 @@ from aiogram.utils.keyboard import (InlineKeyboardMarkup, InlineKeyboardButton, 
 
 from src.misc import MenuNavigationCallback
 
-invite_link = 'tg://msg_url?url=https://t.me/{bot_username}?start={user_tg_id}&text=Присоединяйся%20по%20моей%20ссылке'
+
+invite_link = 'tg://msg_url?url=https://t.me/{bot_username}?start=ref{user_tg_id}' \
+              '&text=Присоединяйся%20по%20моей%20ссылке'
 
 
 class UserMenuKeyboards:
@@ -15,6 +17,7 @@ class UserMenuKeyboards:
             [KeyboardButton(text="🎰  Играть  🎰")],
             [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="🔝 Топ игроков")],
             [KeyboardButton(text="📰 События"), KeyboardButton(text="ℹ Информация")],
+            [KeyboardButton(text="🫂 Банды")]
             ],
             resize_keyboard=True, input_field_placeholder=None)
         return menu_kb
@@ -70,7 +73,5 @@ class UserMenuKeyboards:
 
         builder.adjust(1, 2, 1)
         return builder.as_markup()
-
-
 
 

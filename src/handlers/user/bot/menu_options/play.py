@@ -8,22 +8,35 @@ from src.handlers.user.chat.chat import send_game_created_in_bot_notification
 from src.keyboards.user import UserPrivateGameKeyboards, UserMenuKeyboards
 from src.messages import get_full_game_info_text
 from src.messages.user import UserMenuMessages, UserPrivateGameMessages, GameErrors
-from src.messages.user.games import BlackJackMessages, BaccaratMessages
-from src.misc import MenuNavigationCallback, GamesCallback, GameCategory, GameType, UserStates, GamePagesNavigationCallback
+from src.messages.user.games import BlackJackMessages, BaccaratMessages, BasketballMessages
 from src.utils.game_validations import validate_and_extract_bet_amount, check_rights_and_cancel_game
+from src.misc import MenuNavigationCallback, GamesCallback, GameCategory, GameType, GamePagesNavigationCallback
+from src.misc.states import EnterBetStates
 
 
 # region Utils
 
 
-def get_creatable_game_messages_instance(game_type: GameType):
+def get_game_category_message_instance(game_category: GameCategory):
+    match game_category:
+        case GameCategory.BLACKJACK:
+            return BlackJackMessages
+        case GameCategory.BACCARAT:
+            return BaccaratMessages
+        case GameCategory.BASIC:
+            return UserPrivateGameMessages
+
+
+def get_creatable_game_message_instance(game_type: GameType):
     match game_type:
         case GameType.BJ:
             return BlackJackMessages
         case GameType.BACCARAT:
             return BaccaratMessages
-        case _:
-            return None
+        case GameType.BASKETBALL:
+            return BasketballMessages
+        case GameType.FOOTBALL:
+            pass
 
 
 async def get_play_message_data(user_id: int) -> dict:
@@ -32,7 +45,9 @@ async def get_play_message_data(user_id: int) -> dict:
     return {'text': text, 'reply_markup': reply_markup, 'parse_mode': 'HTML'}
 
 
-async def show_game_category(to_callback: CallbackQuery, game_category: GameCategory, page_num: int = 0):
+async def show_game_category(
+        to_callback: CallbackQuery, game_category: GameCategory, page_num: int = 0
+):
     games_per_page = 2
     offset = page_num * games_per_page
 
@@ -45,7 +60,11 @@ async def show_game_category(to_callback: CallbackQuery, game_category: GameCate
         await to_callback.answer(UserPrivateGameMessages.get_its_last_page())
         return
 
-    text = UserPrivateGameMessages.get_game_category(category=game_category)
+    message_instance = get_game_category_message_instance(game_category=game_category)
+    player = await users.get_user_or_none(telegram_id=to_callback.from_user.id)
+    if not player:
+        return
+    text = message_instance.get_category_description(player_name=player.name)
     markup = await UserPrivateGameKeyboards.get_game_category(
         available_games=available_games, category=game_category, current_page_num=page_num
     )
@@ -68,7 +87,7 @@ async def show_bet_entering(callback: CallbackQuery, game_type: GameType, game_c
     message = callback.message
     await message.delete()
 
-    message_instance = get_creatable_game_messages_instance(game_type=game_type)
+    message_instance = get_creatable_game_message_instance(game_type=game_type)
     text = await UserPrivateGameMessages.enter_bet_amount(
         message_instance=message_instance, user_id=callback.from_user.id, game_type_name=game_type.get_full_name()
     )
@@ -108,7 +127,10 @@ async def handle_game_category_stats_callback(callback: CallbackQuery, callback_
 async def handle_refresh_games_callback(callback: CallbackQuery, callback_data: GamesCallback):
     """Обновление списка доступных игр"""
     try:
-        await show_game_category(to_callback=callback, game_category=callback_data.game_category, page_num=0)
+        await show_game_category(
+            to_callback=callback,  page_num=0,
+            game_category=callback_data.game_category,
+        )
     except TelegramBadRequest:
         pass
     await callback.answer()
@@ -129,7 +151,9 @@ async def handle_game_pages_navigation_callback(callback: CallbackQuery, callbac
         page_num = callback_data.current_page - 1
 
     if page_num >= 0:
-        await show_game_category(to_callback=callback, game_category=callback_data.category, page_num=page_num)
+        await show_game_category(
+            to_callback=callback, game_category=callback_data.category, page_num=page_num
+        )
     else:
         await callback.answer(UserPrivateGameMessages.get_its_last_page())
 
@@ -157,7 +181,7 @@ async def handle_create_game_callback(callback: CallbackQuery, callback_data: Ga
         await show_bet_entering(callback, game_type, game_category)
 
         await state.update_data(game_category=game_category, game_type=game_type)
-        await state.set_state(UserStates.EnterBet.wait_for_bet_amount)
+        await state.set_state(EnterBetStates.wait_for_bet_amount)
 
 
 async def handle_basic_game_type_callback(callback: CallbackQuery, callback_data: GamesCallback, state: FSMContext):
@@ -165,7 +189,7 @@ async def handle_basic_game_type_callback(callback: CallbackQuery, callback_data
     await show_bet_entering(callback, callback_data.game_type, callback_data.game_category)
 
     await state.update_data(game_category=callback_data.game_category, game_type=callback_data.game_type)
-    await state.set_state(UserStates.EnterBet.wait_for_bet_amount)
+    await state.set_state(EnterBetStates.wait_for_bet_amount)
 
 
 async def handle_bet_amount_message(message: Message, state: FSMContext):
@@ -252,7 +276,7 @@ def register_play_handlers(router: Router):
         (F.action == 'create') & F.game_type
     ))
     # назад
-    router.message.register(handle_bet_amount_message, UserStates.EnterBet.wait_for_bet_amount)
+    router.message.register(handle_bet_amount_message, EnterBetStates.wait_for_bet_amount)
 
     router.callback_query.register(handle_back_in_play_callback, MenuNavigationCallback.filter(
         (F.branch == 'game_strategies') & ~F.option))

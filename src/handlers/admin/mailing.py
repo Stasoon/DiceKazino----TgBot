@@ -118,8 +118,10 @@ async def handle_url_button_data(message: Message, state: FSMContext):
                                        reply_markup=markup)
     except Exception as e:
         print(e)
-        await message.answer(text='Вы ввели неправильную информацию для кнопок под постом. Попробуйте снова:',
-                             reply_markup=MailingKb.get_skip_adding_button_to_post())
+        await message.answer(
+            text='Вы ввели неправильную информацию для кнопок под постом. Попробуйте снова:',
+            reply_markup=MailingKb.get_skip_adding_button_to_post()
+        )
         return
 
     await state.update_data(markup=markup)

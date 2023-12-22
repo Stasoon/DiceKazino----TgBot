@@ -1,7 +1,14 @@
 from enum import Enum
 
 
-class PaymentMethod(str, Enum):
+class DepositMethod(str, Enum):
+    CRYPTO_BOT = 'КриптоБот'
+    SBP = 'СБП'
+    U_MONEY = 'ЮMoney'
+    QIWI = 'Киви'
+
+
+class WithdrawMethod(str, Enum):
     CRYPTO_BOT = 'КриптоБот'
     SBP = 'СБП'
     U_MONEY = 'ЮMoney'

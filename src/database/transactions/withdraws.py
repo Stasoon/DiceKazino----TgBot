@@ -5,7 +5,7 @@ from tortoise.functions import Sum
 from ..models import User, Withdraw
 
 
-async def withdraw_balance(user_id: int, amount: float):
+async def withdraw_balance(user_id: int, amount: float, create_record: bool = True):
     """Списать средства с баланса перед выводом"""
     user = await User.get_or_none(telegram_id=user_id)
     if user.balance < amount:
@@ -16,7 +16,8 @@ async def withdraw_balance(user_id: int, amount: float):
     user.balance -= amount
     await user.save()
 
-    await Withdraw.create(user=user, amount=amount)
+    if create_record:
+        await Withdraw.create(user=user, amount=amount)
 
 
 async def get_user_all_withdraws_sum(user: User) -> float:

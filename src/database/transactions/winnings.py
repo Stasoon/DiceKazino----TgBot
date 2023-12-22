@@ -5,6 +5,7 @@ from tortoise.functions import Sum, Count
 
 from settings import Config
 from .referral_bonuses import accrue_referral_bonus
+from ..bands import add_win
 from ..models import User, Winning
 from src.misc import GameCategory
 
@@ -27,6 +28,7 @@ async def accrue_winnings(winner_telegram_id: int, amount: float, game_category:
 
     # увеличиваем баланс того, кто пригласил
     await accrue_referral_bonus(referred_user_id=winner_telegram_id, game_winning_amount=amount_with_commission)
+    await add_win(user_id=winner_telegram_id, amount=amount_with_commission)
     return float(amount_with_commission)
 
 
