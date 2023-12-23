@@ -7,7 +7,7 @@ class BandLeague(IntEnum):
     CARD_MASTERS = auto()  # Мастера карт
     BUSINESSMEN = auto()  # Бизнесмены
     INDUSTRIALISTS = auto()  # Промышленники
-    TYCOONS = auto()  # Магнаты
+    MAGNATES = auto()  # Магнаты
     MONOPOLISTS = auto()  # Монополисты
 
     def get_full_name(self) -> str:
@@ -20,7 +20,7 @@ class BandLeague(IntEnum):
                 return 'Мастера карт'
             case self.BUSINESSMEN:
                 return 'Промышленники'
-            case self.TYCOONS:
+            case self.MAGNATES:
                 return 'Магнаты'
             case self.MONOPOLISTS:
                 return 'Монополисты'

@@ -33,7 +33,7 @@ class BandsMessages:
                 return 'Бизнесмены'
             case BandLeague.INDUSTRIALISTS:
                 return 'Промышленники'
-            case BandLeague.TYCOONS:
+            case BandLeague.MAGNATES:
                 return 'Магнаты'
             case BandLeague.MONOPOLISTS:
                 return 'Монополисты'
@@ -55,8 +55,8 @@ class BandsMessages:
         )
 
     @classmethod
-    def get_ask_for_join_band(cls, band: Band, band_creator: User, band_members: list[User]) -> str:
-        band_description = cls.get_band_description(band=band, band_creator=band_creator, band_members=band_members)
+    def get_ask_for_join_band(cls, band: Band, band_creator: User, members_scores) -> str:
+        band_description = cls.get_band_description(band=band, band_creator=band_creator, members_scores=members_scores)
         return f'Хотите ли вы вступить в эту банду? \n\n{band_description}'
 
     @staticmethod

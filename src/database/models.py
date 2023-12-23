@@ -1,3 +1,5 @@
+from typing import Callable
+
 from aiogram import html
 from tortoise import fields
 from tortoise.models import Model
@@ -36,6 +38,8 @@ class BandMember(Model):
 
 
 class Band(Model):
+    on_league_changed = Callable[[Model], any]
+
     id = fields.BigIntField(pk=True, generated=True, unique=True)
     title = fields.CharField(max_length=50, unique=True)
     league = fields.IntEnumField(enum_type=BandLeague)

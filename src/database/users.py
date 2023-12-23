@@ -18,8 +18,8 @@ async def create_user_if_not_exists(
 
     # Если юзер существует, а name или username не заданы, указываем
     if not created:
-        if not user.name: user.name = first_name
-        if not user.username: user.username = username
+        user.name = first_name
+        user.username = username
         await user.save()
 
     return created if created else None

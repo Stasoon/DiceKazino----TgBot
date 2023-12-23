@@ -44,13 +44,16 @@ class BandsKeyboards:
     @staticmethod
     def get_creator_band_actions(bot_username: str, band_id: int) -> InlineKeyboardMarkup:
         builder = InlineKeyboardBuilder()
-        invite_link = 'tg://msg_url?url=https://t.me/{bot_username}?start=joinband{band_id}&text=Приглашаю%20тебя%20в%20банду!'
+        invite_link = 'tg://msg_url?url=https://t.me/{bot_username}?' \
+                      'start=joinband{band_id}&text=%0AПриглашаю%20тебя%20в%20банду!'
+
         builder.button(text='🔗 Пригласить участника', url=invite_link.format(bot_username=bot_username, band_id=band_id))
         builder.button(text='✏ Изменить название', callback_data=BandCallback(band_id=band_id, action='rename'))
         builder.button(text='🚶‍♂ Исключить участника', callback_data=BandCallback(band_id=band_id, action='kick'))
         builder.button(text='❌ Распустить банду', callback_data=BandCallback(band_id=band_id, action='delete'))
         builder.button(text='👿 Конкуренты', callback_data=BandCallback(band_id=band_id, action='competitors'))
         builder.button(text='🔙 Назад', callback_data=MenuNavigationCallback(branch='bands', option=None))
+
         builder.adjust(1)
         return builder.as_markup()
 

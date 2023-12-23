@@ -161,13 +161,26 @@ async def add_member_to_band(telegram_id: int, band_id: int | str) -> bool:
     return True
 
 
-async def update_band_league(band_id: int, new_league: BandLeague):
-    band = await get_band_by_id(band_id=band_id)
-    if not band_id:
-        raise BandNotFound(band_id_or_title=band_id)
+async def update_band_league(band: Band):
+    if band.score >= 5_000_000:
+        new_league = BandLeague.MONOPOLISTS
+    elif band.score >= 2_000_000:
+        new_league = BandLeague.MAGNATES
+    elif band.score >= 1_000_000:
+        new_league = BandLeague.INDUSTRIALISTS
+    elif band.score >= 600_000:
+        new_league = BandLeague.BUSINESSMEN
+    elif band.score >= 200_000:
+        new_league = BandLeague.CARD_MASTERS
+    elif band.score >= 20_000:
+        new_league = BandLeague.GAMBLERS
+    else:
+        new_league = BandLeague.CROOKS
 
-    band.league = new_league
-    await band.save()
+    if band.league != new_league:
+        band.league = new_league
+        await band.save()
+        await band.on_league_changed(band)
 
 
 async def update_band_title(band_id: int, new_title: str):
@@ -185,6 +198,8 @@ async def add_win(user_id: int, amount: Decimal):
         return
     band.score += amount
     await band.save()
+
+    await update_band_league(band=band)
 
     band_member: BandMember = await BandMember.filter(user_id=user_id).first()
     if not band_member:

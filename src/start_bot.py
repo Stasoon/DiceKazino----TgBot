@@ -5,6 +5,8 @@ from aiogram.types import BotCommandScopeAllGroupChats, BotCommand
 from src import bot, dp
 from src.handlers import register_all_handlers
 from src.database.database_connection import start_database, stop_database
+from src.database.models import Band
+from src.database import bands
 from src.handlers.user.chat.games_process.even_uneven_loop import start_even_uneven_loop
 from settings import Config
 from src.utils import logger
@@ -23,12 +25,23 @@ async def set_bot_commands():
     )
 
 
+async def send_league_updated(band: Band, *args, **kwargs):
+    for member in await bands.get_band_members(band_id=band.id):
+        await bot.send_message(
+            chat_id=member.telegram_id,
+            text=f'Поздравляю! Твоя банда перешла в новую лигу: {band.league.get_full_name()}'
+        )
+
+
 async def on_startup():
     # Запуск базы данных
     await start_database(db_url=Config.Database.DATABASE_URL)
 
     # Установка команд бота
     await set_bot_commands()
+
+    # Функция, вызываемая при переходе банды в новую лигу
+    Band.on_league_changed = send_league_updated
 
     # Регистрация хэндлеров
     register_all_handlers(dp)

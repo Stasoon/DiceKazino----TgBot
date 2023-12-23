@@ -63,22 +63,25 @@ class BlackJackImagePainter(_GameImagePainter):
         player_cards = await playing_cards.get_player_cards(
             game_number=self.game.number, player_id=player_id
         )
+        cards_spacing = self.cards_x_offset - len(player_cards) * 4
 
         for card_num, card in enumerate(player_cards):
             card_file_name = f'{card.value}{card.suit}'
-            card_pos = (cards_start_xy[0] - self.card_size[0] // 8 * len(player_cards) + self.cards_x_offset * card_num,
-                        cards_start_xy[1])
+            card_x_pos = cards_start_xy[0] + cards_spacing * card_num
+            card_pos = (card_x_pos, cards_start_xy[1])
             await self._draw_card(card_file_name=card_file_name, xy=card_pos)
 
     async def __draw_second_player_cards(self, player_id: int, cards_start_xy) -> None:
         player_cards = await playing_cards.get_player_cards(
             game_number=self.game.number, player_id=player_id
         )
+        cards_spacing = self.cards_x_offset - len(player_cards)*4
+        total_width = (len(player_cards) - 1) * cards_spacing
 
         for card_num, card in enumerate(player_cards):
             card_file_name = f'{card.value}{card.suit}'
-            card_pos = (cards_start_xy[0] + self.card_size[0] // 8 * len(player_cards) - self.cards_x_offset * card_num,
-                        cards_start_xy[1])
+            card_x_pos = cards_start_xy[0] - total_width + cards_spacing * card_num
+            card_pos = (card_x_pos, cards_start_xy[1])
             await self._draw_card(card_file_name=card_file_name, xy=card_pos)
 
     async def get_image(self, is_finish: bool = False) -> BufferedInputFile:
@@ -94,25 +97,31 @@ class BlackJackImagePainter(_GameImagePainter):
             players = sorted(await games.get_players_of_game(game=self.game), key=lambda user: user.telegram_id)
 
             # рисуем очки игроков
-            await self.__draw_player_points(player_id=players[0].telegram_id,
-                                            player_name=players[0].name,
-                                            points_xy=(150, 415))
-            await self.__draw_player_points(player_id=players[1].telegram_id,
-                                            player_name=players[1].name,
-                                            points_xy=(self.table_size[0] - 150, 420))
+            await self.__draw_player_points(
+                player_id=players[0].telegram_id,
+                player_name=players[0].name,
+                points_xy=(150, 415))
+
+            name_length_offset = len(players[1].name)*5 if len(players[1].name) > 4 else 0
+            await self.__draw_player_points(
+                player_id=players[1].telegram_id,
+                player_name=players[1].name,
+                points_xy=(self.table_size[0] - 150 - name_length_offset, 418)
+            )
 
             # рисуем карты игроков
-            middle_x = (self.table_size[0] - self.card_size[0]) // 2
             middle_y = (self.table_size[1] - self.card_size[1]) // 2
             players_cards_start_y = middle_y + int(middle_y // 1.5)
+
             await self.__draw_first_player_cards(
                 player_id=players[0].telegram_id,
-                cards_start_xy=(int(middle_x / 6), players_cards_start_y),
+                cards_start_xy=(50, players_cards_start_y),
             )
             await self.__draw_second_player_cards(
                 player_id=players[1].telegram_id,
-                cards_start_xy=(middle_x + int(middle_x / 1.2), players_cards_start_y)
+                cards_start_xy=(self.table_size[0] - self.card_size[0] - 45, players_cards_start_y)
             )
+
             # рисуем карты и очки банкира
             await self.__draw_banker_cards_and_points(show_cards=is_finish)
 

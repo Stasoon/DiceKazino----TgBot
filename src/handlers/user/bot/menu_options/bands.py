@@ -88,10 +88,10 @@ async def show_band_to_join(bot: Bot, user_id: int, band_id: int):
         await bot.send_message(chat_id=user_id, text='В банде нет свободных мест!')
         return
 
-    band_creator = await band.creator.get()
+    band_members_scores = await bands.get_sorted_band_members_with_scores(band_id=band_id)
     await bot.send_message(
         chat_id=user_id,
-        text=BandsMessages.get_ask_for_join_band(band=band, band_creator=band_creator, band_members=band_members),
+        text=BandsMessages.get_ask_for_join_band(band=band, band_creator=band.creator, members_scores=band_members_scores),
         reply_markup=BandsKeyboards.get_join_band(band_id=band_id)
     )
 
