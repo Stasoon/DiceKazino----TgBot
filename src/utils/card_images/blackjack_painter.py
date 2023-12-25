@@ -49,13 +49,18 @@ class BlackJackImagePainter(_GameImagePainter):
     async def __draw_player_points(self, player_id: int, player_name: str, points_xy: tuple[int, int]) -> None:
         points = await playing_cards.count_player_score(game_number=self.game.number, player_id=player_id)
 
+        text = list(f'{player_name}: {points}')
+        if len(text) > 10:
+            text.insert(9, '\n')
+        text = ''.join(text)
+
         # рисуем очки игрока
         self.draw.text(
             xy=points_xy,
-            text=f'{player_name}: {points}',
+            text=text,
             font=self.points_font,
             fill=(255, 255, 0, 230),
-            align='center',
+            align='left',
             anchor='mm'
         )
 
@@ -97,12 +102,13 @@ class BlackJackImagePainter(_GameImagePainter):
             players = sorted(await games.get_players_of_game(game=self.game), key=lambda user: user.telegram_id)
 
             # рисуем очки игроков
+            name_length_offset = len(players[0].name) * 4 if len(players[0].name) > 4 else 0
             await self.__draw_player_points(
                 player_id=players[0].telegram_id,
                 player_name=players[0].name,
-                points_xy=(150, 415))
+                points_xy=(150 + name_length_offset, 415))
 
-            name_length_offset = len(players[1].name)*5 if len(players[1].name) > 4 else 0
+            name_length_offset = len(players[1].name)*2 if len(players[1].name) > 4 else 0
             await self.__draw_player_points(
                 player_id=players[1].telegram_id,
                 player_name=players[1].name,

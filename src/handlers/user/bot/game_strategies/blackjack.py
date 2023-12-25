@@ -15,7 +15,6 @@ from src.misc.callback_factories import BlackJackCallback
 from src.utils.cards import Card, get_random_card
 from src.utils.card_images import BlackJackImagePainter
 from src.utils.game_messages_sender import GameMessageSender
-from src.utils import logger
 
 
 def get_card_points(next_card: Card, current_player_score: int):
@@ -69,43 +68,18 @@ async def give_card_to_dealer_and_get_score(game_number: int) -> int:
 class BlackJackStrategy(GameStrategy):
 
     @staticmethod
-    async def __send_move_to_player(bot: Bot, game: Game, player_id: int, show_markup: bool = True) -> str:
+    async def __send_move_cards_to_player(
+            bot: Bot, game: Game, caption_text: str | None, player_id: int, show_markup: bool = True
+    ) -> str:
         await bot.send_chat_action(chat_id=player_id, action=ChatAction.UPLOAD_PHOTO)
         image_painter = BlackJackImagePainter(game)
         markup = BlackJackKeyboards.get_controls(game_number=game.number) if show_markup else None
         photo = await image_painter.get_image()
 
         result_photo_file_id = await bot.send_photo(
-            chat_id=player_id, photo=photo, reply_markup=markup
+            chat_id=player_id, photo=photo, caption=caption_text, reply_markup=markup
         )
         return result_photo_file_id.photo[0].file_id
-
-    @staticmethod
-    async def __send_result_photo(bot: Bot, game: Game, player_ids: list[int]):
-        # отправляем action загрузки фото
-        await asyncio.gather(*[
-            bot.send_chat_action(chat_id=player_id, action=ChatAction.UPLOAD_PHOTO)
-            for player_id in player_ids
-        ])
-
-        # Генерируем фото и загружаем из буфера. Отправляем первому юзеру
-        image_painter = BlackJackImagePainter(game=game)
-        img = await image_painter.get_image(is_finish=True)
-        result_photo_file_id = await bot.send_photo(
-            chat_id=player_ids[0], photo=img
-        )
-        result_photo_file_id = result_photo_file_id.photo[0].file_id
-
-        # Копируем фото другим игрокам, если оно создалось успешно
-        if result_photo_file_id:
-            for player_id in player_ids[1:]:
-                await bot.send_photo(
-                    chat_id=player_id,
-                    photo=result_photo_file_id
-                )
-
-        # Отправляем результат в игровой чат
-        ...
 
     @staticmethod
     async def __calculate_winnings_and_losses(game: Game, dealer_points: int) -> dict[int, float]:
@@ -148,26 +122,49 @@ class BlackJackStrategy(GameStrategy):
         return won_players
 
     @staticmethod
-    async def __send_winners_text(bot: Bot, won_players: dict[int, float], player_ids: list[int]):
-        for player_id in player_ids:
-            try:
-                text = None  # Инициализируем переменную text для каждого игрока
-                if player_id not in won_players:
-                    text = BlackJackMessages.get_player_loose()
-                elif player_id in won_players:
-                    player_name = (await users.get_user_or_none(telegram_id=player_id)).name
-                    text = BlackJackMessages.get_player_won(
-                        player_name=player_name, win_amount=won_players.get(player_id)
-                    )
+    async def __get_result_text(won_players: dict[int, float], player_id: int):
+        text = None  # Инициализируем переменную text для каждого игрока
+        if player_id not in won_players:
+            text = BlackJackMessages.get_player_loose()
+        elif player_id in won_players:
+            player_name = (await users.get_user_or_none(telegram_id=player_id)).name
+            text = BlackJackMessages.get_player_won(
+                player_name=player_name, win_amount=won_players.get(player_id)
+            )
 
-                # Если won_players пуст, то устанавливаем текст о победе дилера
-                if len(won_players) == 0:
-                    text = BlackJackMessages.get_dealer_won()
+        # Если won_players пуст, то устанавливаем текст о победе дилера
+        if len(won_players) == 0:
+            text = BlackJackMessages.get_dealer_won()
 
-                await bot.send_message(chat_id=player_id, text=text, parse_mode='HTML')
-            except Exception as e:
-                logger.error(f"Ошибка при отправке сообщения игроку {player_id}: {e}")
-                continue
+        return text
+
+    @staticmethod
+    async def __send_result_photo(bot: Bot, game: Game, won_players: dict[int, float], player_ids: list[int]):
+        # отправляем action загрузки фото
+        await asyncio.gather(*[
+            bot.send_chat_action(chat_id=player_id, action=ChatAction.UPLOAD_PHOTO)
+            for player_id in player_ids
+        ])
+
+        # Генерируем фото и загружаем из буфера. Отправляем первому юзеру
+        image_painter = BlackJackImagePainter(game=game)
+        img = await image_painter.get_image(is_finish=True)
+        text = await BlackJackStrategy.__get_result_text(player_id=player_ids[0], won_players=won_players)
+
+        result_photo_file_id = await bot.send_photo(
+            chat_id=player_ids[0], photo=img, caption=text
+        )
+        result_photo_file_id = result_photo_file_id.photo[0].file_id
+
+        # Копируем фото другим игрокам, если оно создалось успешно
+        if result_photo_file_id:
+            for player_id in player_ids[1:]:
+                text = await BlackJackStrategy.__get_result_text(player_id=player_id, won_players=won_players)
+                await bot.send_photo(
+                    chat_id=player_id,
+                    caption=text,
+                    photo=result_photo_file_id
+                )
 
     @staticmethod
     async def start_game(bot: Bot, game: Game):
@@ -189,7 +186,7 @@ class BlackJackStrategy(GameStrategy):
                 reply_markup=ReplyKeyboardRemove()
             )
 
-        await BlackJackStrategy.__send_move_to_player(bot, game, player_ids[0])
+        await BlackJackStrategy.__send_move_cards_to_player(bot, game, None, player_ids[0])
 
     @staticmethod
     async def let_next_player_move_or_finish_game(player_id, game_number, bot):
@@ -201,7 +198,9 @@ class BlackJackStrategy(GameStrategy):
             await BlackJackStrategy.finish_game(bot, game)
         else:
             next_player_id = player_ids[next_player_index]
-            await BlackJackStrategy.__send_move_to_player(bot=bot, game=game, player_id=next_player_id)
+            await BlackJackStrategy.__send_move_cards_to_player(
+                bot=bot, game=game, player_id=next_player_id, caption_text=None
+            )
 
     @staticmethod
     async def finish_game_for_player_and_get_points(game_number: int, user_id: int) -> int | None:
@@ -239,10 +238,7 @@ class BlackJackStrategy(GameStrategy):
             text=BlackJackMessages.get_game_finished(), markup=UserMenuKeyboards.get_main_menu()
         )
         player_ids = await games.get_player_ids_of_game(game)
-        await BlackJackStrategy.__send_result_photo(bot, game, player_ids=player_ids)
-
-        # Отправляем сообщение с победителями
-        await BlackJackStrategy.__send_winners_text(bot=bot, won_players=won_players, player_ids=player_ids)
+        await BlackJackStrategy.__send_result_photo(bot=bot, game=game, won_players=won_players, player_ids=player_ids)
 
         # Очищаем данные
         await game_scores.delete_game_scores(game)
@@ -260,8 +256,10 @@ class BlackJackStrategy(GameStrategy):
 
         # если меньше не проиграл, даём ещё ход
         if points <= 21:
-            await BlackJackStrategy.__send_move_to_player(bot=callback.bot, game=game, player_id=callback.from_user.id)
-            await callback.message.answer(text=BlackJackMessages.get_player_took_card(player_points=points))
+            await BlackJackStrategy.__send_move_cards_to_player(
+                bot=callback.bot, game=game, player_id=callback.from_user.id,
+                caption_text=BlackJackMessages.get_player_took_card(player_points=points)
+            )
             return
 
         # выводим игрока из игры, так как перебор очков

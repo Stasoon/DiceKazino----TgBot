@@ -26,7 +26,13 @@ class InputErrors:
 
     @staticmethod
     def get_cmd_invalid_argument_count(must_be_count: int) -> str:
-        return f'❗В команде должно быть {must_be_count} параметра.'
+        last_num = int(str(must_be_count)[-1])
+        if last_num == 1:
+            return f'❗В команде должен быть ровно {must_be_count} параметр.'
+        elif last_num > 4:
+            return f'❗В команде должно быть {must_be_count} параметров.'
+        else:
+            return f'❗В команде должно быть {must_be_count} параметра.'
 
     @staticmethod
     def get_text_expected_retry() -> str:

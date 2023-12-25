@@ -3,10 +3,9 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters.command import Command
 from aiogram.types import Message
 
-from src.database import users, games, transactions
+from src.database import users, games
 from src.messages import GameErrors
 from src.messages.user import UserMenuMessages, get_short_game_info_text
-from src.misc import GameStatus
 from src.utils.game_validations import check_rights_and_cancel_game
 
 

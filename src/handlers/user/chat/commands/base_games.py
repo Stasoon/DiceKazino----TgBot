@@ -18,7 +18,8 @@ async def create_game_and_send(message: Message, command: CommandObject, game_ty
         game_type=game_type,
         chat_id=message.chat.id,
         game_category=GameCategory.BASIC,
-        bet=bet)
+        bet=bet
+    )
 
     await transactions.deduct_bet_from_user_balance(game=game, user_telegram_id=message.from_user.id, amount=bet)
 
@@ -39,7 +40,8 @@ game_type_map = {
     'darts': GameType.DARTS,
     'basket': GameType.BASKETBALL,
     'foot': GameType.FOOTBALL,
-    'bowl': GameType.BOWLING
+    'bowl': GameType.BOWLING,
+    'slots': GameType.CASINO,
 }
 
 

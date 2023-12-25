@@ -26,10 +26,10 @@ from src.utils.game_validations import validate_and_extract_bet_amount
 
 def get_bet_option_description(option: str):
     match option:
-        case 'A':
-            return 'одно из чисел чётное'
-        case 'B':
-            return 'одно из чисел нечётное'
+        # case 'A':
+        #     return 'одно из чисел чётное'
+        # case 'B':
+        #     return 'одно из чисел нечётное'
         case 'C':
             return '1>2'
         case 'D':
@@ -42,9 +42,14 @@ def get_bet_option_description(option: str):
             return 'число 5'
         case 'H':
             return '1 == 2'
+    return None
 
 
 async def show_bet_entering(message: Message, state: FSMContext, round_number: int, bet_option: str):
+    option = get_bet_option_description(bet_option)
+    if not option:
+        return
+
     await message.answer(
         text='Введите сумму ставки:',
         reply_markup=EvenUnevenKeyboards.get_cancel_bet_entering(),

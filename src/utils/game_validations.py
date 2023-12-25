@@ -63,7 +63,7 @@ def validate_create_game_cmd(args_count: int = 1, min_bet: int = 30):
                 if bet < min_bet:
                     await message.reply(BalanceErrors.get_bet_too_low(min_bet))
                     return
-                elif balance < min_bet:
+                elif balance < bet:
                     await message.answer(BalanceErrors.get_low_balance())
                     return
                 elif user_active_game:

@@ -29,8 +29,6 @@ class EvenUnevenKeyboards:
     def get_bet_options(round_number: int, bot_username: str) -> InlineKeyboardMarkup:
         builder = InlineKeyboardBuilder()
         url = f'https://t.me/{bot_username}?start=EuN_{round_number}_' + '{move}'
-        builder.button(text='Чётное число (X1.5)', url=url.format(move='A'))
-        builder.button(text='Нечётное число (X1.5)', url=url.format(move='B'))
         builder.button(text='1 > 2 (X1.5)', url=url.format(move='C'))
         builder.button(text='2 > 1 (X1.5)', url=url.format(move='D'))
         builder.button(text='Оба чётные (X2.5)', url=url.format(move='E'))

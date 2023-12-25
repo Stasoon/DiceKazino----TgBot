@@ -19,6 +19,8 @@ class BandLeague(IntEnum):
             case self.CARD_MASTERS:
                 return 'Мастера карт'
             case self.BUSINESSMEN:
+                return 'Бизнесмены'
+            case self.INDUSTRIALISTS:
                 return 'Промышленники'
             case self.MAGNATES:
                 return 'Магнаты'

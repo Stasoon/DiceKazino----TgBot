@@ -2,11 +2,25 @@ from aiogram import Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
-from src.database import games, transactions
+from src.database import games, transactions, Game
 from src.handlers.user.bot.game_strategies import BaccaratStrategy, BlackJackStrategy
-from src.handlers.user.chat.chat import send_game_created_in_bot_notification
+from src.keyboards import UserPublicGameKeyboards
+from src.messages import UserPublicGameMessages
 from src.misc import GameType, GameCategory
 from src.utils.game_validations import validate_create_game_cmd
+
+
+async def __send_game_created(message: Message, created_game: Game):
+    bot_username = (await message.bot.get_me()).username
+
+    # отправляем сообщение о том, что игра создана
+    game_start_message = await message.answer(
+        text=await UserPublicGameMessages.get_game_created_in_bot_notification(created_game, bot_username),
+        reply_markup=await UserPublicGameKeyboards.get_go_to_bot_and_join(created_game, bot_username),
+        parse_mode='HTML'
+    )
+    # сохраняем сообщение в базе данных за начатой игрой
+    await games.update_message_id(game=created_game, new_message_id=game_start_message.message_id)
 
 
 async def create_game_and_deduct_bet(
@@ -43,7 +57,7 @@ async def handle_create_black_jack_cmd(message: Message, command: CommandObject)
         game_category=GameCategory.BLACKJACK, game_type=GameType.BJ
     )
 
-    await send_game_created_in_bot_notification(message.bot, created_game)
+    await __send_game_created(message=message, created_game=created_game)
 
 
 @validate_create_game_cmd(args_count=1)
@@ -57,7 +71,7 @@ async def handle_create_baccarat_cmd(message: Message, command: CommandObject):
         game_category=GameCategory.BACCARAT, game_type=GameType.BACCARAT
     )
 
-    await send_game_created_in_bot_notification(message.bot, created_game)
+    await __send_game_created(message=message, created_game=created_game)
 
 
 # endregion
