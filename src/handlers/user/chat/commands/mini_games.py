@@ -48,6 +48,10 @@ async def process_mini_game_result(user_message: Message, game: Game, win_coeffi
 
 @validate_create_game_cmd(args_count=2)
 async def handle_cube_command(message: Message, command: CommandObject):
+    if not 1 <= int(command.args.split()[-1]) <= 6:
+        await message.answer('❗Можно поставить только на числа с 1 по 6')
+        return
+
     game = await start_mini_game(message, command, GameType.DICE)
 
     user_choice = command.args.split()[1]

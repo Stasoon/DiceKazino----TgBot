@@ -101,7 +101,10 @@ class BlackJackMessages(BotGamesMessagesBase, CreatableGamesMessages):
 
     @staticmethod
     def get_tie():
-        pass
+        texts = (
+            'У вас ничья с банкиром!'
+        )
+        return random.choice(texts)
 
     @staticmethod
     def get_player_loose():
@@ -123,3 +126,7 @@ class BlackJackMessages(BotGamesMessagesBase, CreatableGamesMessages):
             'Товарищи игроки, я забираю себе ваши ставки! - с довольной ухмылкой говорит диллер, ведь его счет лучше счета игроков.',
         )
         return random.choice(texts)
+
+    @staticmethod
+    def get_time_left():
+        return 'Время на ход вышло!'

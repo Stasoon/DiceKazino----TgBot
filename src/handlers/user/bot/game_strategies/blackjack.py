@@ -1,9 +1,12 @@
 import asyncio
+from dataclasses import dataclass
 
 from aiogram import Router, F, Bot
 from aiogram.enums import ChatAction
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, ReplyKeyboardRemove
 
+from settings import Config
 from src.database import Game, games, users, transactions
 from src.database.games import playing_cards, game_scores
 from src.handlers.user.bot.game_strategies.game_strategy import GameStrategy
@@ -15,6 +18,7 @@ from src.misc.callback_factories import BlackJackCallback
 from src.utils.cards import Card, get_random_card
 from src.utils.card_images import BlackJackImagePainter
 from src.utils.game_messages_sender import GameMessageSender
+from src.utils.timer import BaseTimer
 
 
 def get_card_points(next_card: Card, current_player_score: int):
@@ -65,6 +69,46 @@ async def give_card_to_dealer_and_get_score(game_number: int) -> int:
 # endregion
 
 
+class BlackJackTimer(BaseTimer):
+    def __init__(self, bot: Bot, game_number: int, chat_id: int, text_template: str, markup=None, step: int = 5):
+        super().__init__(chat_id, step)
+
+        self.bot = bot
+        self.game_number = game_number
+
+        self.template = text_template
+        self.markup = markup
+
+    async def on_time_left(self):
+        try:
+            await self.bot.delete_message(chat_id=self.timer.chat_id, message_id=self.timer.message_id)
+        except TelegramBadRequest:
+            return
+        else:
+            await self.bot.send_message(chat_id=self.timer.chat_id, text=BlackJackMessages.get_time_left())
+            await BlackJackStrategy.let_next_player_move_or_finish_game(
+                bot=self.bot, game_number=self.game_number, player_id=self.timer.chat_id
+            )
+        await self.timer.delete()
+
+    async def make_tick(self):
+        await super().make_tick()
+
+        try:
+            await self.bot.edit_message_caption(
+                chat_id=self.timer.chat_id, message_id=self.timer.message_id,
+                caption=self.template.format(str(self)), reply_markup=self.markup
+            )
+        except Exception:
+            return
+
+
+@dataclass
+class BlackJackResult:
+    winnings: dict[int, float]
+    ties: list[int]
+
+
 class BlackJackStrategy(GameStrategy):
 
     @staticmethod
@@ -76,13 +120,29 @@ class BlackJackStrategy(GameStrategy):
         markup = BlackJackKeyboards.get_controls(game_number=game.number) if show_markup else None
         photo = await image_painter.get_image()
 
-        result_photo_file_id = await bot.send_photo(
-            chat_id=player_id, photo=photo, caption=caption_text, reply_markup=markup
+        timer_text = '\n⏱ {0}'
+        if caption_text:
+            caption_text += timer_text
+        else:
+            caption_text = timer_text
+
+        timer = BlackJackTimer(
+            bot=bot, game_number=game.number, chat_id=player_id, text_template=caption_text, markup=markup
         )
-        return result_photo_file_id.photo[0].file_id
+
+        time_on_move = 65
+        result_photo_msg = await bot.send_photo(
+            chat_id=player_id, photo=photo, reply_markup=markup,
+            caption=caption_text.format(BlackJackTimer.format_seconds_to_time(time_on_move))
+        )
+
+        await timer.setup_timer(seconds_expiry=time_on_move, message_id=result_photo_msg.message_id)
+        await timer.start_timer()
+
+        return result_photo_msg.photo[0].file_id
 
     @staticmethod
-    async def __calculate_winnings_and_losses(game: Game, dealer_points: int) -> dict[int, float]:
+    async def __calculate_winnings_and_losses(game: Game, dealer_points: int) -> BlackJackResult:
         """
         Вычисляет победителей и начисляет им выигрыши.
         :returns:
@@ -90,6 +150,7 @@ class BlackJackStrategy(GameStrategy):
         """
         players_scores = await game_scores.get_game_moves(game)
         won_players = {}
+        tie = []
 
         for player_score in players_scores:
             # Если перебор очков, пропускаем игрока
@@ -107,7 +168,7 @@ class BlackJackStrategy(GameStrategy):
             # если ничья
             elif player_score.value == dealer_points:
                 await transactions.make_bet_refund(player_id=player_id, amount=game.bet, game=game)
-                # !!!!
+                tie.append(player_id)
                 continue
 
             # блэк джек (чистая победа)
@@ -119,27 +180,34 @@ class BlackJackStrategy(GameStrategy):
                 won_players[player_id] = amount
                 continue
 
-        return won_players
+        return BlackJackResult(winnings=won_players, ties=tie)
 
     @staticmethod
-    async def __get_result_text(won_players: dict[int, float], player_id: int):
+    async def __get_result_text(result: BlackJackResult, player_id):
         text = None  # Инициализируем переменную text для каждого игрока
-        if player_id not in won_players:
+
+        # Если нет в победителях
+        if player_id not in result.winnings:
             text = BlackJackMessages.get_player_loose()
-        elif player_id in won_players:
+        # Если есть в победителях
+        elif player_id in result.winnings:
             player_name = (await users.get_user_or_none(telegram_id=player_id)).name
             text = BlackJackMessages.get_player_won(
-                player_name=player_name, win_amount=won_players.get(player_id)
+                player_name=player_name, win_amount=result.winnings.get(player_id)
             )
-
+        # Если есть среди тех, у кого ничья
+        elif player_id in result.ties:
+            text = BlackJackMessages.get_tie()
         # Если won_players пуст, то устанавливаем текст о победе дилера
-        if len(won_players) == 0:
+        if len(result.winnings) == 0:
             text = BlackJackMessages.get_dealer_won()
 
         return text
 
     @staticmethod
-    async def __send_result_photo(bot: Bot, game: Game, won_players: dict[int, float], player_ids: list[int]):
+    async def __send_result_photo(
+            bot: Bot, game: Game, result: BlackJackResult, player_ids: list[int]
+    ):
         # отправляем action загрузки фото
         await asyncio.gather(*[
             bot.send_chat_action(chat_id=player_id, action=ChatAction.UPLOAD_PHOTO)
@@ -149,7 +217,7 @@ class BlackJackStrategy(GameStrategy):
         # Генерируем фото и загружаем из буфера. Отправляем первому юзеру
         image_painter = BlackJackImagePainter(game=game)
         img = await image_painter.get_image(is_finish=True)
-        text = await BlackJackStrategy.__get_result_text(player_id=player_ids[0], won_players=won_players)
+        text = await BlackJackStrategy.__get_result_text(player_id=player_ids[0], result=result)
 
         result_photo_file_id = await bot.send_photo(
             chat_id=player_ids[0], photo=img, caption=text
@@ -159,12 +227,17 @@ class BlackJackStrategy(GameStrategy):
         # Копируем фото другим игрокам, если оно создалось успешно
         if result_photo_file_id:
             for player_id in player_ids[1:]:
-                text = await BlackJackStrategy.__get_result_text(player_id=player_id, won_players=won_players)
+                text = await BlackJackStrategy.__get_result_text(player_id=player_id, result=result)
                 await bot.send_photo(
                     chat_id=player_id,
                     caption=text,
                     photo=result_photo_file_id
                 )
+
+        await bot.send_photo(
+            chat_id=game.chat_id if game.chat_id < 0 else Config.Games.GAME_CHAT_ID,
+            photo=result_photo_file_id, caption=f'Результаты {game}'
+        )
 
     @staticmethod
     async def start_game(bot: Bot, game: Game):
@@ -238,7 +311,9 @@ class BlackJackStrategy(GameStrategy):
             text=BlackJackMessages.get_game_finished(), markup=UserMenuKeyboards.get_main_menu()
         )
         player_ids = await games.get_player_ids_of_game(game)
-        await BlackJackStrategy.__send_result_photo(bot=bot, game=game, won_players=won_players, player_ids=player_ids)
+        await BlackJackStrategy.__send_result_photo(
+            bot=bot, game=game, result=won_players, player_ids=player_ids
+        )
 
         # Очищаем данные
         await game_scores.delete_game_scores(game)
@@ -279,7 +354,9 @@ class BlackJackStrategy(GameStrategy):
         points = await playing_cards.count_player_score(game_number, callback.from_user.id)
 
         # Выводим игрока из игры
-        await callback.message.answer(BlackJackMessages.get_player_stopped(player_points=points))
+        text = BlackJackMessages.get_player_stopped(player_points=points)
+        await callback.message.answer(text=text)
+
         await BlackJackStrategy.finish_game_for_player_and_get_points(
             game_number=game_number, user_id=callback.from_user.id,
         )

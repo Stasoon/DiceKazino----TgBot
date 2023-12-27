@@ -51,7 +51,7 @@ class BlackJackImagePainter(_GameImagePainter):
 
         text = list(f'{player_name}: {points}')
         if len(text) > 10:
-            text.insert(9, '\n')
+            text.insert(len(text)//2, '\n')
         text = ''.join(text)
 
         # рисуем очки игрока

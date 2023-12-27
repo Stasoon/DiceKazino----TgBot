@@ -176,7 +176,7 @@ async def send_result_to_players(bot, game: Game, bet_choices: Collection[Player
     # отправляем сообщение о том, что игра завершена, в чат
     await bot.send_photo(
         photo=result_photo_file_id,
-        chat_id=Config.Games.GAME_CHAT_ID,
+        chat_id=game.chat_id if game.chat_id < 0 else Config.Games.GAME_CHAT_ID,
         caption=text,
         parse_mode='HTML'
     )
@@ -219,7 +219,7 @@ class BaccaratStrategy(GameStrategy):
         if not betting_option_number:
             return
 
-        # Сохраяняем ставку
+        # Сохраняем ставку
         await game_scores.add_player_move_if_not_moved(game, user_id, betting_option_number)
         await message.answer(text='Ваша ставка принята', reply_markup=ReplyKeyboardRemove())
 

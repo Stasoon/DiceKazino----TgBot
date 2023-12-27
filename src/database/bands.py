@@ -192,7 +192,7 @@ async def update_band_title(band_id: int, new_title: str):
     await band.save()
 
 
-async def add_win(user_id: int, amount: Decimal):
+async def add_band_win(user_id: int, amount: Decimal):
     band = await get_user_band(telegram_id=user_id)
     if not band:
         return

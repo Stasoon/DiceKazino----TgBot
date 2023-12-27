@@ -1,10 +1,11 @@
+import uuid
 from typing import Callable
 
 from aiogram import html
 from tortoise import fields
 from tortoise.models import Model
 
-from src.misc import GameStatus, GameType, GameCategory
+from src.misc import GameStatus, GameType, GameCategory, DepositMethod, WithdrawMethod
 from src.misc.enums.leagues import BandLeague
 
 
@@ -13,10 +14,12 @@ from src.misc.enums.leagues import BandLeague
 class User(Model):
     telegram_id = fields.BigIntField(pk=True)
     name = fields.CharField(max_length=32)
-    username = fields.CharField(max_length=32)
+    username = fields.CharField(max_length=32, null=True)
     balance = fields.DecimalField(max_digits=12, decimal_places=2)
     referred_by = fields.ForeignKeyField('models.User', related_name='referrals', null=True)
     registration_date = fields.DatetimeField(auto_now_add=True)
+    # last_activity = fields.DatetimeField(auto_now_add=True)
+    # bot_blocked = fields.BooleanField(default=False)
 
     def get_mention_url(self):
         return f"tg://user?id={self.telegram_id}"
@@ -54,6 +57,13 @@ class Band(Model):
 # endregion
 
 # region Games
+
+
+class Timer(Model):  # ПЕРЕНЕСТИ В REDIS !!!
+    unique_id = fields.UUIDField(pk=True, default=uuid.uuid4)
+    chat_id = fields.IntField()
+    message_id = fields.BigIntField()
+    timer_expiry = fields.IntField()
 
 
 class Game(Model):
@@ -148,6 +158,7 @@ class Deposit(Model):
     """Пополнения балансов"""
     id = fields.BigIntField(pk=True, generated=True)
     user = fields.ForeignKeyField('models.User', related_name='user_deposits')
+    method = fields.CharEnumField(enum_type=DepositMethod)
     amount = fields.DecimalField(max_digits=10, decimal_places=2)
     timestamp = fields.DatetimeField(auto_now_add=True)
 
@@ -159,6 +170,7 @@ class Withdraw(Model):
     """Выводы средств с балансов"""
     id = fields.BigIntField(pk=True, generated=True)
     user = fields.ForeignKeyField('models.User', related_name='user_withdraws')
+    method = fields.CharEnumField(enum_type=WithdrawMethod)
     amount = fields.DecimalField(max_digits=10, decimal_places=2)
     timestamp = fields.DatetimeField(auto_now_add=True)
 

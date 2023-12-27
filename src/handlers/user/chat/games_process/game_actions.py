@@ -1,7 +1,7 @@
 import asyncio
 
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, ForceReply
+from aiogram.types import Message, CallbackQuery, ForceReply, ReplyKeyboardRemove
 
 from src.database import games, transactions, Game, User
 from src.database.games import game_scores
@@ -54,17 +54,18 @@ async def process_player_move(game: Game, message: Message):
         await game_scores.add_player_move_if_not_moved(game, player_telegram_id=player_telegram_id, move_value=dice_value)
 
     # если все походили, ждём окончания анимации и заканчиваем игру
-    if len(await game_scores.get_game_moves(game)) == game.max_players:
+    if len(await game_scores.get_game_moves(game)) >= game.max_players:
         await finish_game(game, message)
 
 
 async def __accrue_players_winnings_and_get_amount(game: Game, win_coefficient: float, winners: list[User]) -> float:
     # Начисляем выигрыши победителям
     winning_with_commission = None
+
     for winner in winners:
         winning_with_commission = await transactions.accrue_winnings(
             game_category=game.category, winner_telegram_id=winner.telegram_id,
-            amount=game.bet * win_coefficient
+            amount=(game.bet * win_coefficient) / len(winners)
         )
     return winning_with_commission
 
@@ -73,7 +74,7 @@ async def finish_game(game: Game, message: Message):
     if game.status == GameStatus.FINISHED:
         return
 
-    win_coefficient = 2
+    win_coefficient = len(await games.get_players_of_game(game))  # ставка умножается на количество игроков
     game_moves = await game_scores.get_game_moves(game)
     await games.finish_game(game)
     await game_scores.delete_game_scores(game)
@@ -100,7 +101,7 @@ async def finish_game(game: Game, message: Message):
     text = await UserPublicGameMessages.get_game_in_chat_finish(
         game=game, game_moves=game_moves, winners=winners, win_amount=winning_with_commission
     )
-    await message.answer(text=text, parse_mode='HTML')
+    await message.answer(text=text, reply_markup=ReplyKeyboardRemove(), parse_mode='HTML')
 
 # endregion Utils
 

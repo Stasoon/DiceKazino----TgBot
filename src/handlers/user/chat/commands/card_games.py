@@ -24,7 +24,8 @@ async def __send_game_created(message: Message, created_game: Game):
 
 
 async def create_game_and_deduct_bet(
-        user_id: int, bet_amount: float, game_category: GameCategory, game_type: GameType, max_players: int = 2
+        user_id: int, chat_id: int, bet_amount: float,
+        game_category: GameCategory, game_type: GameType, max_players: int = 2
 ):
     """
     Создаёт игру с указанными параметрами и списывает размер ставки с баланса создателя.
@@ -32,7 +33,7 @@ async def create_game_and_deduct_bet(
     """
     created_game = await games.create_game(
         game_category=game_category, game_type=game_type,
-        chat_id=user_id,
+        chat_id=chat_id,
         creator_telegram_id=user_id, max_players=max_players, bet=bet_amount
     )
 
@@ -53,7 +54,8 @@ async def handle_create_black_jack_cmd(message: Message, command: CommandObject)
 
     # создаём игру и списываем ставку с баланса создателя
     created_game = await create_game_and_deduct_bet(
-        user_id=message.from_user.id, bet_amount=bet_amount,
+        user_id=message.from_user.id, chat_id=message.chat.id,
+        bet_amount=bet_amount,
         game_category=GameCategory.BLACKJACK, game_type=GameType.BJ
     )
 
@@ -67,7 +69,7 @@ async def handle_create_baccarat_cmd(message: Message, command: CommandObject):
 
     # создаём игру и списываем ставку с баланса создателя
     created_game = await create_game_and_deduct_bet(
-        user_id=message.from_user.id, bet_amount=bet_amount,
+        user_id=message.from_user.id, chat_id=message.chat.id, bet_amount=bet_amount,
         game_category=GameCategory.BACCARAT, game_type=GameType.BACCARAT
     )
 

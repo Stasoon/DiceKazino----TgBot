@@ -32,8 +32,6 @@ async def create_game_and_send(message: Message, command: CommandObject, game_ty
     await games.update_message_id(game, game_start_message.message_id)
 
 
-# region For two players
-
 # в словарь добавлять в формате 'команда': GameType
 game_type_map = {
     'dice': GameType.DICE,

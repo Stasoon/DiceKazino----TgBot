@@ -133,7 +133,7 @@ async def handle_halfauto_deposit_screen_message(message: Message, state: FSMCon
             amount=data.get('amount'),
             photo_file_id=message.photo[0].file_id,
             transaction_type='deposit',
-            method_name=data.get('method')
+            method_name=data.get('method').value
         )
     except Exception as e:
         logger.error(f'Ошибка при пополнении баланса {e}')
