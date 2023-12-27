@@ -52,7 +52,7 @@ def validate_create_game_cmd(args_count: int = 1, min_bet: int = 30):
         async def wrapper(message: Message, command: CommandObject, *args, **kwargs):
             try:
                 cmd_args = command.args.split()
-                bet = float(cmd_args[0])
+                bet = float(cmd_args[0].replace(',', '.'))
                 user_active_game = await games.get_user_unfinished_game(message.from_user.id)
                 balance = await users.get_user_balance(telegram_id=message.from_user.id)
             except AttributeError:
@@ -65,6 +65,9 @@ def validate_create_game_cmd(args_count: int = 1, min_bet: int = 30):
                     return
                 elif balance < bet:
                     await message.answer(BalanceErrors.get_low_balance())
+                    return
+                elif balance >= Config.Payments.MAX_BET:
+                    await message.answer(BalanceErrors.get_bet_too_high(Config.Payments.MAX_BET))
                     return
                 elif user_active_game:
                     text = GameErrors.get_another_game_not_finished(user_active_game)
@@ -113,6 +116,9 @@ async def validate_and_extract_bet_amount(amount_message: Message) -> float | No
             parse_mode='HTML'
         )
         return None
+    elif bet_amount > Config.Payments.MAX_BET:
+        await amount_message.answer(BalanceErrors.get_bet_too_high(max_bet=Config.Payments.MAX_BET), parse_mode='HTML')
+        return
 
     return bet_amount
 

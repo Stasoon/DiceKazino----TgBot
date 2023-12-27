@@ -77,13 +77,14 @@ class BalanceErrors:
         return f'⛔Минимальная сумма вывода - {format_float_to_rub_string(min_withdraw_amount, use_html=False)}'
 
     @staticmethod
-    def get_insufficient_bet_amount_retry(min_bet_amount: float):
-        return f'❗Минимальная сумма ставки - {format_float_to_rub_string(min_bet_amount)}. \n' \
+    def get_bet_too_low(min_bet: int) -> str:
+        return f'❗Минимальная ставка в этой игре - {format_float_to_rub_string(min_bet, use_html=False)}' \
                f'Попробуйте ещё раз:'
 
     @staticmethod
-    def get_bet_too_low(min_bet: int) -> str:
-        return f'❗Минимальная ставка в этой игре - {format_float_to_rub_string(min_bet, use_html=False)}'
+    def get_bet_too_high(max_bet: float) -> str:
+        return f'❗Максимальная ставка - {format_float_to_rub_string(max_bet, use_html=False)}' \
+               f'Попробуйте ещё раз:'
 
 
 class GameErrors:

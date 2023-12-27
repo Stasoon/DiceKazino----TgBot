@@ -16,6 +16,7 @@ class Config:
         DEPOSITS_CHANNEL_ID: Final[int] = int(os.getenv('DEPOSITS_CHANNEL_ID'))
         WITHDRAWS_CHANNEL_ID: Final[int] = int(os.getenv('WITHDRAWS_CHANNEL_ID'))
 
+        MAX_BET = 50_000_000.0
         percent_to_referrer: Final[float] = float(0.05)
         winning_commission: Final[float] = float(0.05)
 

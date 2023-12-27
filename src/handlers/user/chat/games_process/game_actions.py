@@ -41,6 +41,9 @@ async def join_chat_game(callback: CallbackQuery, game: Game):
 
     if len(await games.get_players_of_game(game)) >= game.max_players:
         await start_chat_game(game, callback)
+    else:
+        text = await UserPublicGameMessages.get_game_in_chat_created(game=game, chat_username=callback.message.chat.username)
+        await callback.message.edit_text(text=text, reply_markup=callback.message.reply_markup)
 
 
 async def process_player_move(game: Game, message: Message):

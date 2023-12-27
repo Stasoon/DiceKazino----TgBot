@@ -20,7 +20,7 @@ class BaseTimer(ABC):
             await old_timer.delete()
 
         self.timer = await Timer.create(chat_id=self.chat_id, timer_expiry=seconds_expiry, message_id=message_id)
-        self.timer_id = self.timer.unique_id
+        self.timer_id = self.timer.id
 
     async def start_timer(self):
         while True:

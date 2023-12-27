@@ -25,7 +25,7 @@ def get_card_points(next_card: Card, current_player_score: int):
     if next_card.value in ('10', 'В', 'Д', 'К'):
         return 10
     elif next_card.value == 'Т':
-        return 11 if (current_player_score and current_player_score + 11 < 21) else 1
+        return 11 if current_player_score + 11 <= 21 else 1
     else:
         return int(next_card.value[0])
 
@@ -130,7 +130,7 @@ class BlackJackStrategy(GameStrategy):
             bot=bot, game_number=game.number, chat_id=player_id, text_template=caption_text, markup=markup
         )
 
-        time_on_move = 65
+        time_on_move = 5*60
         result_photo_msg = await bot.send_photo(
             chat_id=player_id, photo=photo, reply_markup=markup,
             caption=caption_text.format(BlackJackTimer.format_seconds_to_time(time_on_move))
@@ -199,7 +199,7 @@ class BlackJackStrategy(GameStrategy):
         elif player_id in result.ties:
             text = BlackJackMessages.get_tie()
         # Если won_players пуст, то устанавливаем текст о победе дилера
-        if len(result.winnings) == 0:
+        elif len(result.winnings) == 0:
             text = BlackJackMessages.get_dealer_won()
 
         return text
@@ -300,16 +300,20 @@ class BlackJackStrategy(GameStrategy):
 
         # Дилер добирает карты
         dealer_points = await playing_cards.count_dealer_score(game.number)
-        while dealer_points <= 16:
+        while dealer_points <= 15:
             dealer_points = await give_card_to_dealer_and_get_score(game_number=game.number)
 
         # Начисляем выигрыши
         won_players = await BlackJackStrategy.__calculate_winnings_and_losses(game=game, dealer_points=dealer_points)
 
         # Отправляем фото с результатом игры
-        await GameMessageSender(game=game, bot=bot).send(
-            text=BlackJackMessages.get_game_finished(), markup=UserMenuKeyboards.get_main_menu()
-        )
+        for player_id in await games.get_player_ids_of_game(game):
+            await bot.send_message(
+                chat_id=player_id,
+                text=BlackJackMessages.get_game_finished(),
+                reply_markup=UserMenuKeyboards.get_main_menu())
+            await asyncio.sleep(0.05)
+
         player_ids = await games.get_player_ids_of_game(game)
         await BlackJackStrategy.__send_result_photo(
             bot=bot, game=game, result=won_players, player_ids=player_ids

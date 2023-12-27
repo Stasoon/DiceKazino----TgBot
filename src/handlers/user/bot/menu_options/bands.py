@@ -30,9 +30,9 @@ async def get_title_or_send_error(title_message: Message) -> str | None:
         await title_message.answer('Название банды должно содержать хотя бы одну букву! \nПопробуйте ещё раз:')
         return None
 
-    if not band_title.isalnum():
+    if not band_title.replace(' ', '').isalnum():
         await title_message.answer(
-            text='Название банды может содержать только русские и английские буквы, а также числа. \n'
+            text='Название банды может содержать только русские и английские буквы, пробелы, а также числа. \n'
                  'Попробуйте ещё раз:'
         )
         return None

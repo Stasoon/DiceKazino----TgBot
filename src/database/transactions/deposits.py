@@ -3,9 +3,10 @@ from decimal import Decimal
 from tortoise.functions import Sum
 
 from ..models import User, Deposit
+from ...misc import DepositMethod
 
 
-async def deposit_to_user(user_id: int, amount: float, create_record: bool = True) -> bool:
+async def deposit_to_user(user_id: int, amount: float, method: DepositMethod = None, create_record: bool = True) -> bool:
     """Начислить депозит юзеру"""
     amount = Decimal(amount)
     user = await User.get_or_none(telegram_id=user_id)
@@ -17,7 +18,7 @@ async def deposit_to_user(user_id: int, amount: float, create_record: bool = Tru
     await user.save()
 
     if create_record:
-        await Deposit.create(user=user, amount=amount)
+        await Deposit.create(user=user, amount=amount, method=method)
     return True
 
 

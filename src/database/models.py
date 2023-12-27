@@ -60,8 +60,8 @@ class Band(Model):
 
 
 class Timer(Model):  # ПЕРЕНЕСТИ В REDIS !!!
-    unique_id = fields.UUIDField(pk=True, default=uuid.uuid4)
-    chat_id = fields.IntField()
+    id = fields.UUIDField(pk=True, default=uuid.uuid4)
+    chat_id = fields.BigIntField()
     message_id = fields.BigIntField()
     timer_expiry = fields.IntField()
 
@@ -158,7 +158,7 @@ class Deposit(Model):
     """Пополнения балансов"""
     id = fields.BigIntField(pk=True, generated=True)
     user = fields.ForeignKeyField('models.User', related_name='user_deposits')
-    method = fields.CharEnumField(enum_type=DepositMethod)
+    method = fields.CharEnumField(enum_type=DepositMethod, null=True)
     amount = fields.DecimalField(max_digits=10, decimal_places=2)
     timestamp = fields.DatetimeField(auto_now_add=True)
 
@@ -170,7 +170,7 @@ class Withdraw(Model):
     """Выводы средств с балансов"""
     id = fields.BigIntField(pk=True, generated=True)
     user = fields.ForeignKeyField('models.User', related_name='user_withdraws')
-    method = fields.CharEnumField(enum_type=WithdrawMethod)
+    method = fields.CharEnumField(enum_type=WithdrawMethod, null=True)
     amount = fields.DecimalField(max_digits=10, decimal_places=2)
     timestamp = fields.DatetimeField(auto_now_add=True)
 

@@ -17,7 +17,7 @@ class BlackJackImagePainter(_GameImagePainter):
         self.table_size: Tuple[int, int] = (0, 0)
         self.draw: ImageDraw = None
 
-        self.points_font = ImageFont.truetype("font.otf", 45, encoding='UTF-8')
+        self.points_font = ImageFont.truetype("font.otf", 40, encoding='UTF-8')
 
         self.cards_x_offset = 80
 

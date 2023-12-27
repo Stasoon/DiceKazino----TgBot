@@ -106,6 +106,9 @@ async def handle_show_deposit_method_callbacks(
 async def handle_halfauto_deposit_amount_message(message: Message, state: FSMContext):
     """Обрабатывает сообщение с размером депозита при полуавтоматическом пополнении"""
     deposit_amount = await fetch_amount_from_message(message)
+    if not deposit_amount:
+        return
+
     min_deposit_amount = Config.Payments.min_deposit_amount
 
     if deposit_amount < min_deposit_amount:

@@ -88,6 +88,9 @@ async def handle_show_withdraw_method_callbacks(
 
 async def handle_withdraw_amount_message(message: Message, state: FSMContext):
     withdraw_amount = await validate_and_get_transaction_amount(message)
+    if not withdraw_amount:
+        return
+
     data = await state.get_data()
 
     if withdraw_amount:
