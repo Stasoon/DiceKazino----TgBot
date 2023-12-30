@@ -6,6 +6,7 @@ from tortoise import fields
 from tortoise.models import Model
 
 from src.misc import GameStatus, GameType, GameCategory, DepositMethod, WithdrawMethod
+from src.misc.enums.games_enums import EvenUnevenBetOption
 from src.misc.enums.leagues import BandLeague
 
 
@@ -18,8 +19,8 @@ class User(Model):
     balance = fields.DecimalField(max_digits=12, decimal_places=2)
     referred_by = fields.ForeignKeyField('models.User', related_name='referrals', null=True)
     registration_date = fields.DatetimeField(auto_now_add=True)
-    # last_activity = fields.DatetimeField(auto_now_add=True)
-    # bot_blocked = fields.BooleanField(default=False)
+    last_activity = fields.DatetimeField(auto_now_add=True)
+    bot_blocked = fields.BooleanField(default=False)
 
     def get_mention_url(self):
         return f"tg://user?id={self.telegram_id}"
@@ -112,7 +113,7 @@ class PlayingCard(Model):
 class EvenUnevenPlayerBet(Model):
     player = fields.ForeignKeyField('models.User', related_name='even_uneven_player_bet')
     amount = fields.FloatField()
-    option = fields.CharField(max_length=1)
+    option = fields.CharEnumField(enum_type=EvenUnevenBetOption)
 
     class Meta:
         table = "even_uneven_player_bet"

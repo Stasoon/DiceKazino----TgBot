@@ -4,7 +4,7 @@ from aiogram.exceptions import TelegramAPIError
 
 from src.filters import IsAdminFilter
 from src.misc import AdminValidatePaymentCallback
-from src.database.transactions import deposit_to_user
+from src.database.transactions import deposit_to_user, withdraws
 
 
 async def handle_validate_payment_callback(callback: CallbackQuery, callback_data: AdminValidatePaymentCallback):
@@ -15,7 +15,8 @@ async def handle_validate_payment_callback(callback: CallbackQuery, callback_dat
         await callback.bot.copy_message(
             chat_id=callback.message.chat.id,
             from_chat_id=callback.message.chat.id,
-            message_id=callback.message.message_id)
+            message_id=callback.message.message_id
+        )
 
     transaction_word = 'пополнение' if callback_data.transaction_type == 'deposit' else 'вывод'
 
@@ -31,10 +32,14 @@ async def handle_validate_payment_callback(callback: CallbackQuery, callback_dat
 
     await callback.bot.send_message(
         callback_data.user_id, text=f'✅ Ваша заявка на {transaction_word} {callback_data.amount}₽ была выполнена.')
+
     if callback_data.transaction_type == 'deposit':
-        await deposit_to_user(callback_data.user_id, callback_data.amount)
+        await deposit_to_user(callback_data.user_id, callback_data.amount, method=callback_data.method)
 
 
 def register_validate_request_handlers(router: Router):
-    router.callback_query.register(handle_validate_payment_callback, AdminValidatePaymentCallback.filter(),
-                                   IsAdminFilter(True))
+    router.callback_query.register(
+        handle_validate_payment_callback,
+        AdminValidatePaymentCallback.filter(),
+        IsAdminFilter(True)
+    )

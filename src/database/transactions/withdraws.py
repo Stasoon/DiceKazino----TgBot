@@ -3,9 +3,10 @@ from decimal import Decimal
 from tortoise.functions import Sum
 
 from ..models import User, Withdraw
+from ...misc import WithdrawMethod
 
 
-async def withdraw_balance(user_id: int, amount: float, create_record: bool = True):
+async def withdraw_balance(user_id: int, amount: float, method: WithdrawMethod = None, create_record: bool = True):
     """Списать средства с баланса перед выводом"""
     user = await User.get_or_none(telegram_id=user_id)
     if user.balance < amount:
@@ -17,7 +18,7 @@ async def withdraw_balance(user_id: int, amount: float, create_record: bool = Tr
     await user.save()
 
     if create_record:
-        await Withdraw.create(user=user, amount=amount)
+        await Withdraw.create(user=user, amount=amount, method=method)
 
 
 async def get_user_all_withdraws_sum(user: User) -> float:

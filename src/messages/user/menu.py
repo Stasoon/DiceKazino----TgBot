@@ -1,6 +1,6 @@
 from aiogram import html
 
-from src.database import transactions, User, users, get_total_games_count, get_total_users_count
+from src.database import transactions, User, users, get_total_games_count, get_total_users_count, bands
 from src.utils.text_utils import format_float_to_rub_string
 from settings import Config
 
@@ -47,9 +47,13 @@ class UserMenuMessages:
 
     @staticmethod
     async def get_profile(user: User) -> str:
+        user_band = await bands.get_user_band(telegram_id=user.telegram_id)
+        band_text = '' if not user_band else f'🫂 Банда: <code>{user_band.title}</code> \n'
+
         return (
             f'🌀 ID: {html.code(user.telegram_id)} \n'
             f'👤 Ник: {html.code(html.quote(user.name))} \n'
+            f'{band_text}'
             f'🪙 Баланс:  {format_float_to_rub_string(user.balance)} \n'
             f'🕑 Дата регистрации: {html.code(user.registration_date.strftime("%d/%m/%Y"))} \n\n'
             f'➕ Пополнил:  {format_float_to_rub_string(await transactions.get_user_all_deposits_sum(user))} \n'

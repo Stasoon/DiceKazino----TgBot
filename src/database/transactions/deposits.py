@@ -6,20 +6,23 @@ from ..models import User, Deposit
 from ...misc import DepositMethod
 
 
-async def deposit_to_user(user_id: int, amount: float, method: DepositMethod = None, create_record: bool = True) -> bool:
-    """Начислить депозит юзеру"""
+async def deposit_to_user(
+        user_id: int, amount: float, method: DepositMethod = None, create_record: bool = True
+) -> Deposit | None:
+    """ Начислить депозит юзеру """
     amount = Decimal(amount)
     user = await User.get_or_none(telegram_id=user_id)
 
     if not user:
-        return False
+        return None
 
     user.balance += amount
     await user.save()
 
     if create_record:
-        await Deposit.create(user=user, amount=amount, method=method)
-    return True
+        deposit = await Deposit.create(user=user, amount=amount, method=method)
+        return deposit
+    return None
 
 
 async def get_user_all_deposits_sum(user: User) -> float:

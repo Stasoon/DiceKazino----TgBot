@@ -64,6 +64,7 @@ async def show_game_category(
     player = await users.get_user_or_none(telegram_id=to_callback.from_user.id)
     if not player:
         return
+
     text = message_instance.get_category_description(player_name=player.name)
     markup = await UserPrivateGameKeyboards.get_game_category(
         available_games=available_games, category=game_category, current_page_num=page_num

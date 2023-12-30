@@ -93,4 +93,5 @@ class AdminValidatePaymentCallback(CallbackData, prefix='confirm_payment'):
     user_id: int
     amount: float
     transaction_type: Literal['deposit', 'withdraw']
+    method: DepositMethod | WithdrawMethod
     confirm: bool

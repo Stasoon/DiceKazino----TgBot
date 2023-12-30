@@ -3,7 +3,7 @@ from typing import Collection, Union, Any, Generator
 
 from aiogram import Router, F, Bot
 from aiogram.enums import ChatAction
-from aiogram.exceptions import TelegramNetworkError
+from aiogram.exceptions import TelegramNetworkError, TelegramBadRequest
 from aiogram.types import Message, ReplyKeyboardRemove
 
 from src.database import Game, PlayerScore, games, transactions
@@ -18,7 +18,7 @@ from src.keyboards import UserMenuKeyboards
 from src.misc import GameStatus
 from src.utils.cards import get_shuffled_deck, Card
 from settings import Config
-
+from src.utils.timer import BaseTimer
 
 # region Utils
 
@@ -127,18 +127,18 @@ async def process_game_and_get_won_option(bot: Bot, game: Game):
     if player_points <= 5:
         player_third_card = await deal_card(deck=deck, player_id=PLAYER_ID, game=game)
         await sender.send(text='Игрок берёт третью карту...')
-        await asyncio.sleep(0.8)
+        await asyncio.sleep(1)
 
         # если игрок взял третью карту, проверяем, должен ли банкир брать карту по правилам
         if should_dealer_pick_third_card(banker_points, player_third_card):
             await deal_card(deck=deck, player_id=BANKER_ID, game=game)
             await sender.send(text='Дилер берёт третью карту...')
-            await asyncio.sleep(0.8)
+            await asyncio.sleep(1)
     # если игрок не взял карту, но у дилера от 0 до 5, берёт карту
     elif banker_points < 6:
         await deal_card(deck=deck, player_id=BANKER_ID, game=game)
         await sender.send(text='Дилер берёт третью карту...')
-        await asyncio.sleep(0.8)
+        await asyncio.sleep(1)
 
 
 async def send_result_to_players(bot, game: Game, bet_choices: Collection[PlayerScore]):
@@ -182,6 +182,52 @@ async def send_result_to_players(bot, game: Game, bet_choices: Collection[Player
     )
 
 
+class BaccaratTimer(BaseTimer):
+
+    def __init__(self, bot: Bot, game: Game, chat_id: int, message_id: int, seconds_expiry: int, text_template: str):
+        super().__init__(chat_id, message_id, seconds_expiry)
+
+        self.bot = bot
+        self.game = game
+        self.template = text_template
+
+    @classmethod
+    async def stop(cls, bot: Bot, chat_id: int):
+        try:
+            timer = await super(BaccaratTimer, cls).stop(chat_id)
+            await bot.delete_message(chat_id=timer.chat_id, message_id=timer.message_id)
+        except Exception:
+            pass
+
+    async def make_tick(self):
+        await super(BaccaratTimer, self).make_tick()
+
+        try:
+            await self.bot.edit_message_text(
+                chat_id=self.timer.chat_id,
+                message_id=self.timer.message_id,
+                text=self.template.format(str(self))
+            )
+        except Exception:
+            return
+
+    async def on_time_left(self):
+        try:
+            await self.bot.delete_message(chat_id=self.timer.chat_id, message_id=self.timer.message_id)
+        except TelegramBadRequest:
+            return
+        else:
+            await self.bot.send_message(chat_id=self.timer.chat_id, text="Время на ход вышло!")
+            await game_scores.add_player_move_if_not_moved(
+                self.game, self.timer.chat_id, move_value=BaccaratBettingOption.PLAYER.value
+            )
+
+            if await game_scores.is_all_players_moved(self.game):
+                await BaccaratStrategy.finish_game(self.bot, self.game)
+
+        await self.timer.delete()
+
+
 # endregion Utils
 
 # region Handlers
@@ -192,9 +238,31 @@ class BaccaratStrategy(GameStrategy):
     @staticmethod
     async def start_game(bot: Bot, game: Game):
         """Когда все игроки собраны, вызывается функция для старта игры в баккара"""
+        time_on_move = 5*60
+        player_ids = await games.get_player_ids_of_game(game)
+
         text = BaccaratMessages.get_bet_prompt()
+        counter_text = "⏱ Время на ход: {0}"
         reply_markup = BaccaratKeyboards.get_bet_options()
-        await GameMessageSender(bot, game).send(text, markup=reply_markup)
+
+        timers = []
+
+        for player_id in player_ids:
+            await bot.send_message(chat_id=player_id, text=text, reply_markup=reply_markup)
+            counter_msg = await bot.send_message(
+                chat_id=player_id, text=counter_text.format(BaccaratTimer.format_seconds_to_time(time_on_move))
+            )
+
+            timer = BaccaratTimer(
+                bot=bot, game=game,
+                chat_id=player_id, message_id=counter_msg.message_id,
+                seconds_expiry=time_on_move, text_template=counter_text,
+            )
+
+            # Создаем задачу для таймера и добавляем ее в список
+            timers.append(asyncio.create_task(timer.start()))
+
+        await asyncio.gather(*timers)
 
     @staticmethod
     def __interpret_user_bet_choice(bet_text: str) -> int:
@@ -210,6 +278,8 @@ class BaccaratStrategy(GameStrategy):
     @classmethod
     async def handle_bet_move_message(cls, message: Message) -> None:
         """Обрабатывает сообщение с тем, на кого ставит игрок - банк, ничью, игрока"""
+        await BaccaratTimer.stop(bot=message.bot, chat_id=message.from_user.id)
+
         user_id = message.from_user.id
         game = await games.get_user_unfinished_game(user_id)
         if not game:

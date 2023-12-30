@@ -35,6 +35,7 @@ async def validate_and_get_transaction_amount(amount_message: Message) -> float 
         await amount_message.answer(
             text=BalanceErrors.get_insufficient_transaction_amount(min_transaction_amount)
         )
+        return
 
     return transaction_amount
 
@@ -74,7 +75,7 @@ async def handle_show_withdraw_method_callbacks(
     # если метод вывода - криптобот
     if callback_data.method == WithdrawMethod.CRYPTO_BOT:
         text = UserPaymentMessages.choose_currency()
-        markup = await UserPaymentKeyboards.get_crypto_bot_choose_currency(callback_data.transaction_type)
+        markup = await UserPaymentKeyboards.get_crypto_bot_choose_currency(transaction_type='withdraw')
         await callback.message.edit_text(text=text, reply_markup=markup, parse_mode='HTML')
 
     # если метод вывода полуавтоматический
@@ -132,14 +133,14 @@ async def handle_confirm_withdraw_callback(
         return
 
     # иначе делаем списание и пост в канал с чеками
-    await withdraw_balance(user_id=callback.from_user.id, amount=data.get('amount'))
+    await withdraw_balance(user_id=callback.from_user.id, amount=data.get('amount'), method=data.get('method'))
 
     await post_payment.send_payment_request_to_admin(
         bot=callback.bot,
         user_id=callback.from_user.id, user_name=callback.from_user.full_name,
         amount=data.get('amount'),
         transaction_type='withdraw',
-        method_name=data.get('method').value,
+        method=data.get('method'),
         requisites=data.get('requisites')
     )
 

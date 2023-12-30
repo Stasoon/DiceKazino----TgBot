@@ -7,6 +7,7 @@ from src.misc import GameType, GameCategory, GameStatus
 from src.misc.callback_factories import (
     BlackJackCallback, GamesCallback, MenuNavigationCallback, GamePagesNavigationCallback
 )
+from src.misc.enums.games_enums import EvenUnevenBetOption
 
 
 class BaccaratKeyboards:
@@ -29,13 +30,13 @@ class EvenUnevenKeyboards:
     def get_bet_options(round_number: int, bot_username: str) -> InlineKeyboardMarkup:
         builder = InlineKeyboardBuilder()
         url = f'https://t.me/{bot_username}?start=EuN_{round_number}_' + '{move}'
-        builder.button(text='1 > 2 (X1.5)', url=url.format(move='C'))
-        builder.button(text='2 > 1 (X1.5)', url=url.format(move='D'))
-        builder.button(text='Оба чётные (X2.5)', url=url.format(move='E'))
-        builder.button(text='Оба нечётные (X2.5)', url=url.format(move='F'))
-        builder.button(text='Число 5 (X2.5)', url=url.format(move='G'))
-        builder.button(text='Одинаковое значение костей (X5)', url=url.format(move='H'))
-        builder.adjust(2, 2, 2, 1, 1)
+        builder.button(text='< 7', url=url.format(move=EvenUnevenBetOption.LESS_7.value))
+        builder.button(text='= 7', url=url.format(move=EvenUnevenBetOption.EQUALS_7.value))
+        builder.button(text='> 7', url=url.format(move=EvenUnevenBetOption.GREATER_7.value))
+        builder.button(text='Чёт', url=url.format(move=EvenUnevenBetOption.EVEN.value))
+        builder.button(text='Нечёт', url=url.format(move=EvenUnevenBetOption.UNEVEN.value))
+        builder.button(text='D1 = D2', url=url.format(move=EvenUnevenBetOption.A_EQUALS_B.value))
+        builder.adjust(3, 2, 1)
         return builder.as_markup()
 
 
@@ -70,7 +71,7 @@ class UserPrivateGameKeyboards:
             action='show', game_category=GameCategory.BLACKJACK, game_type=GameType.BJ))
         builder.button(text='🎴 Baccarat', callback_data=GamesCallback(
             action='show', game_category=GameCategory.BACCARAT, game_type=GameType.BACCARAT))
-        builder.button(text='EvenUneven', url='https://t.me/SpotDiceV')
+        builder.button(text='EvenUneven', url='https://t.me/SpotDiceU')
         builder.adjust(1)
         return builder.as_markup()
 

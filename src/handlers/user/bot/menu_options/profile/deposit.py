@@ -21,6 +21,10 @@ async def fetch_amount_from_message(amount_message: Message) -> float | None:
     """Делает проверку суммы депозита, написанной в сообщении.
     При некорректно введённых данных, отправляет сообщение и возвращает None.
     Если всё хорошо, возвращает float из сообщения"""
+    if not amount_message.text:
+        # await amount_message.answer('')
+        return
+
     try:
         transaction_amount = float(amount_message.text.replace(',', '.'))
     except (ValueError, TypeError):
@@ -136,7 +140,7 @@ async def handle_halfauto_deposit_screen_message(message: Message, state: FSMCon
             amount=data.get('amount'),
             photo_file_id=message.photo[0].file_id,
             transaction_type='deposit',
-            method_name=data.get('method').value
+            method=data.get('method')
         )
     except Exception as e:
         logger.error(f'Ошибка при пополнении баланса {e}')
@@ -190,7 +194,7 @@ async def handle_check_cryptobot_payment(
     await state.clear()
     rate = await cryptobot.get_exchange_rate(invoice.get('asset'))
     amount = float(invoice.get('amount'))
-    await transactions.deposit_to_user(callback.from_user.id, amount * rate)
+    await transactions.deposit_to_user(callback.from_user.id, amount * rate, method=callback_data.method)
 
     await callback.message.delete()
     await callback.message.answer(

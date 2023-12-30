@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 import matplotlib.pyplot as plt
 from aiogram import Router, F
@@ -7,6 +7,9 @@ from aiogram.types import Message, CallbackQuery
 
 from src.database.models import Withdraw, Deposit
 from src.keyboards.admin import StatisticsKbs
+from collections import defaultdict
+
+from src.utils.text_utils import format_float_to_rub_string
 
 
 class Messages:
@@ -41,13 +44,36 @@ async def f():
     plt.grid(True)
 
 
-async def __handle_show_transactions_stats(message: Message):
-    await message.answer(
-        text='За какой период отобразить статистику?',
-        reply_markup=StatisticsKbs.get_()
+async def get_stats(model: Deposit | Withdraw, days_back: int):
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=days_back)
+
+    transactions = (
+        await model
+        .filter(timestamp__gte=start_date, timestamp__lte=end_date)
+        .order_by('timestamp')
     )
-    print(message)
-    await f()
+
+    global_sum = sum(t.amount for t in transactions)
+    unique_count = len({t.user for t in transactions})
+
+    return (
+        f"{f'Пополнения' if isinstance(model, Deposit) else 'Выводы'} средств за {days_back} дней \n\n"
+        f"Общая сумма: {format_float_to_rub_string(global_sum)} \n"
+        f"Количество транзакций: {len(transactions)} \n"
+        f"Уникальных транзакций: {unique_count}"
+    )
+
+
+async def __handle_show_transactions_stats(message: Message):
+
+    s = (1, 7, 30)
+    n = (Deposit, Withdraw)
+
+    for j in n:
+        for i in s:
+            text = await get_stats(model=j, days_back=i)
+            await message.answer(text=text)
 
 
 async def __handle_show_game_transactions_stats(message: Messages):

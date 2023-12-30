@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import AsyncGenerator, Union
 
 from tortoise.exceptions import DoesNotExist
@@ -13,13 +14,17 @@ async def create_user_if_not_exists(
     balance: int = 0
 ) -> User | None:
     """ Создаёт юзера, если он не существует. Если юзер был создан, возвращает его. Иначе None """
-    defaults = {'name': first_name, 'username': username, 'balance': balance, 'referred_by_id': referrer_telegram_id}
+    defaults = {
+        'name': first_name, 'username': username, 'balance': balance,
+        'referred_by_id': referrer_telegram_id, 'bot_blocked': False
+    }
     user, created = await User.get_or_create(telegram_id=telegram_id, defaults=defaults)
 
     # Если юзер существует, а name или username не заданы, указываем
     if not created:
         user.name = first_name
         user.username = username
+        user.bot_blocked = False
         await user.save()
 
     return created if created else None
@@ -71,6 +76,20 @@ async def get_referrals_count_by_telegram_id(user_id: int):
         return referrals_count
     else:
         return None
+
+
+async def update_last_activity(user_id: int, new_activity: datetime):
+    user = await get_user_or_none(telegram_id=user_id)
+    if user:
+        user.last_activity = new_activity
+        await user.save()
+
+
+async def set_user_blocked_bot(user_id: int):
+    user = await get_user_or_none(telegram_id=user_id)
+    if user:
+        user.bot_blocked = True
+        await user.save()
 
 
 async def get_all_user_ids() -> AsyncGenerator[int, None]:

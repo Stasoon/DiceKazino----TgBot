@@ -2,6 +2,7 @@ import json
 
 import asyncio
 import os.path
+from random import randint
 
 from aiogram import Bot
 from aiogram.types import Message
@@ -12,9 +13,9 @@ from src.utils.logging import logger
 from src.database.games import even_uneven
 from src.database import transactions
 from src.keyboards.user.games import EvenUnevenKeyboards
-from src.misc.enums.games_enums import EvenUnevenCoefficients, GameCategory
-from src.messages.user.games import HitOrMissMessages
-
+from src.misc.enums.games_enums import EvenUnevenBetOption, GameCategory
+from src.messages.user.games import EvenUnevenMessages
+from src.utils.text_utils import format_float_to_rub_string
 
 data_file_name = 'even_uneven_data.json'
 
@@ -23,26 +24,24 @@ def get_formatted_time(seconds: int = 0):
     return f"{seconds // 60:02}:{seconds % 60:02}"
 
 
-def get_won_bet_options(dice_values) -> str:
+def get_won_bet_options(dice_values: tuple[int, int]) -> list[EvenUnevenBetOption]:
     """Возвращает строку с кодовыми названиями опций, которые победили исходя из значений на костях"""
-    won_options = ''
+    won_options = []
     a, b = dice_values
-    if a % 2 == 0 or b % 2 == 0:  # На чётное
-        won_options += 'A'
-    if a % 2 != 0 or b % 2 != 0:  # На
-        won_options += 'B'
-    if a > b:
-        won_options += 'C'
-    if a < b:
-        won_options += 'D'
-    if a % 2 == 0 and b % 2 == 0:
-        won_options += 'E'
-    if a % 2 != 0 and b % 2 != 0:
-        won_options += 'F'
+
+    if a + b < 7:
+        won_options.append(EvenUnevenBetOption.LESS_7)
+    if a + b == 7:
+        won_options.append(EvenUnevenBetOption.EQUALS_7)
+    if a + b > 7:
+        won_options.append(EvenUnevenBetOption.GREATER_7)
+    if (a + b) % 2 == 0:
+        won_options.append(EvenUnevenBetOption.EVEN)
+    if (a + b) % 2 != 0:
+        won_options.append(EvenUnevenBetOption.UNEVEN)
     if a == b:
-        won_options += 'G'
-    if a == 5 or b == 5:
-        won_options += 'H'
+        won_options.append(EvenUnevenBetOption.A_EQUALS_B)
+
     return won_options
 
 
@@ -87,27 +86,28 @@ class EvenUneven:
             if bet.option in won_bet_options:
                 win_amount = await transactions.accrue_winnings(
                     winner_telegram_id=player_id, game_category=GameCategory.EVEN_UNEVEN,
-                    amount=bet.amount * EvenUnevenCoefficients.get(bet.option)
+                    amount=bet.amount * bet.option.get_coefficient()
                 )
                 winnings_sum += win_amount
-                text = f'Вы выиграли {win_amount}'
+                text = EvenUnevenMessages.get_player_won(bet_option=bet.option, amount=win_amount)
             else:
-                text = f'<b>🎲 Вы проиграли {bet.amount}₽</b>'
+                text = EvenUnevenMessages.get_player_loose(bet=bet.option)
             await self.bot.send_message(chat_id=player_id, text=text, parse_mode='HTML')
 
         return winnings_sum
 
     async def edit_stats_message(self):
-        text = await HitOrMissMessages.get_top()
-        stats_msg = await self.bot.send_message(chat_id=self.chat_id, text=text, parse_mode='HTML')
+        text = await EvenUnevenMessages.get_top()
+        stats_msg = await self.bot.send_message(
+            chat_id=self.chat_id, text=text, parse_mode='HTML', disable_notification=True
+        )
         self.__round_message_ids.append(stats_msg.message_id)
 
     async def __send_round_start_and_start_timer(self, round_number: int):
-        # seconds_to_wait = randint(2, 4) * 60 - 1
-        seconds_to_wait = 20
+        seconds_to_wait = randint(2, 4) * 60 - 1
 
         # Отправляем сообщение
-        template = HitOrMissMessages.get_timer_template(round_number=round_number)
+        template = EvenUnevenMessages.get_timer_template(round_number=round_number)
         bot_username = (await self.bot.get_me()).username
         self.markup = EvenUnevenKeyboards.get_bet_options(round_number=round_number, bot_username=bot_username)
 

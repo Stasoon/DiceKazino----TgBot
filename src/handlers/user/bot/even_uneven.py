@@ -1,6 +1,3 @@
-# from dataclasses import dataclass
-# from enum import Enum
-
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -8,45 +5,35 @@ from aiogram.fsm.context import FSMContext
 from src.database import transactions
 from src.database.games.even_uneven import add_player_bet
 from src.keyboards.user.games import EvenUnevenKeyboards
+from src.misc.enums.games_enums import EvenUnevenBetOption
 from src.misc.states import EnterEvenUnevenBetStates
 from src.utils.game_validations import validate_and_extract_bet_amount
 
 
-# @dataclass
-# class EvenUnevenOptionData:
-#     short_descript: str
-#     full_descript: str
-#     coeff: float
-#     condition: Callable
-#
-#
-# class EvenUnevenOption:
-#     A = EvenUnevenOptionData(, 'одно из чисел чётное', lambda a,b: a%2 == 0 or b%2 == 0)
-
-
-def get_bet_option_description(option: str):
+def get_bet_option_description(option: EvenUnevenBetOption):
     match option:
-        # case 'A':
-        #     return 'одно из чисел чётное'
-        # case 'B':
-        #     return 'одно из чисел нечётное'
-        case 'C':
-            return '1>2'
-        case 'D':
-            return '2>1'
-        case 'E':
-            return 'оба чётные'
-        case 'F':
-            return 'оба нечётные'
-        case 'G':
-            return 'число 5'
-        case 'H':
-            return '1 == 2'
+        case EvenUnevenBetOption.LESS_7:
+            return 'Сумма > 7'
+        case EvenUnevenBetOption.EQUALS_7:
+            return 'Сумма = 7'
+        case EvenUnevenBetOption.GREATER_7:
+            return 'Сумма > 7'
+        case EvenUnevenBetOption.EVEN:
+            return 'Чётное'
+        case EvenUnevenBetOption.UNEVEN:
+            return 'Нечётное'
+        case EvenUnevenBetOption.A_EQUALS_B:
+            return 'Первое = Второму'
     return None
 
 
 async def show_bet_entering(message: Message, state: FSMContext, round_number: int, bet_option: str):
-    option = get_bet_option_description(bet_option)
+    try:
+        option = EvenUnevenBetOption(bet_option)
+    except ValueError:
+        return
+
+    # option_description = get_bet_option_description(option)
     if not option:
         return
 
@@ -55,7 +42,7 @@ async def show_bet_entering(message: Message, state: FSMContext, round_number: i
         reply_markup=EvenUnevenKeyboards.get_cancel_bet_entering(),
         parse_mode='HTML'
     )
-    await state.update_data(round_number=round_number, bet_option=bet_option)
+    await state.update_data(round_number=round_number, bet_option=option)
     await state.set_state(EnterEvenUnevenBetStates.wait_for_bet)
 
 
@@ -75,7 +62,7 @@ async def handle_bet_amount_message(message: Message, state: FSMContext):
     # отвечаем, что ставка принята
     option_description = get_bet_option_description(data.get("bet_option"))
     await message.answer(
-        f'Вы поставили {bet_amount:.2f} руб на: {option_description}'
+        f'Вы поставили {bet_amount:.2f} рублей на: <b>{option_description}</b>'
     )
 
     await state.clear()

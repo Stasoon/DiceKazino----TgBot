@@ -28,7 +28,7 @@ class InputErrors:
     def get_cmd_invalid_argument_count(must_be_count: int) -> str:
         last_num = int(str(must_be_count)[-1])
         if last_num == 1:
-            return f'❗В команде должен быть ровно {must_be_count} параметр.'
+            return f'❗В команде должен быть {must_be_count} параметр.'
         elif last_num > 4:
             return f'❗В команде должно быть {must_be_count} параметров.'
         else:
@@ -78,13 +78,13 @@ class BalanceErrors:
 
     @staticmethod
     def get_bet_too_low(min_bet: int) -> str:
-        return f'❗Минимальная ставка в этой игре - {format_float_to_rub_string(min_bet, use_html=False)}' \
-               f'Попробуйте ещё раз:'
+        return f'❗Минимальная ставка в этой игре - {format_float_to_rub_string(min_bet, use_html=False)} \n' \
+               f'Попробуйте ещё раз'
 
     @staticmethod
     def get_bet_too_high(max_bet: float) -> str:
-        return f'❗Максимальная ставка - {format_float_to_rub_string(max_bet, use_html=False)}' \
-               f'Попробуйте ещё раз:'
+        return f'❗Максимальная ставка - {format_float_to_rub_string(max_bet, use_html=False)} \n' \
+               f'Попробуйте ещё раз'
 
 
 class GameErrors:

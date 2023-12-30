@@ -16,5 +16,6 @@ class StatisticsKbs(AdminKeyboardBase):
         builder.button(text='За неделю')
         builder.button(text='За месяц')
         builder.button(text='За всё время')
+
         builder.adjust(2)
         return builder.as_markup()

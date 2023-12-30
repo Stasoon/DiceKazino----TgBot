@@ -17,7 +17,6 @@ from src.misc import GameStatus
 from src.misc.callback_factories import BlackJackCallback
 from src.utils.cards import Card, get_random_card
 from src.utils.card_images import BlackJackImagePainter
-from src.utils.game_messages_sender import GameMessageSender
 from src.utils.timer import BaseTimer
 
 
@@ -25,7 +24,7 @@ def get_card_points(next_card: Card, current_player_score: int):
     if next_card.value in ('10', 'В', 'Д', 'К'):
         return 10
     elif next_card.value == 'Т':
-        return 11 if current_player_score + 11 <= 21 else 1
+        return 11 if (current_player_score and current_player_score + 11 <= 21) else 1
     else:
         return int(next_card.value[0])
 
@@ -70,8 +69,13 @@ async def give_card_to_dealer_and_get_score(game_number: int) -> int:
 
 
 class BlackJackTimer(BaseTimer):
-    def __init__(self, bot: Bot, game_number: int, chat_id: int, text_template: str, markup=None, step: int = 5):
-        super().__init__(chat_id, step)
+    def __init__(
+            self, bot: Bot, game_number: int,
+            chat_id: int, message_id: int,
+            text_template: str, markup=None,
+            seconds_expiry: int = 300
+    ):
+        super(BlackJackTimer, self).__init__(chat_id=chat_id, message_id=message_id, seconds_expiry=seconds_expiry)
 
         self.bot = bot
         self.game_number = game_number
@@ -92,7 +96,7 @@ class BlackJackTimer(BaseTimer):
         await self.timer.delete()
 
     async def make_tick(self):
-        await super().make_tick()
+        await super(BlackJackTimer, self).make_tick()
 
         try:
             await self.bot.edit_message_caption(
@@ -126,18 +130,18 @@ class BlackJackStrategy(GameStrategy):
         else:
             caption_text = timer_text
 
-        timer = BlackJackTimer(
-            bot=bot, game_number=game.number, chat_id=player_id, text_template=caption_text, markup=markup
-        )
-
         time_on_move = 5*60
         result_photo_msg = await bot.send_photo(
             chat_id=player_id, photo=photo, reply_markup=markup,
             caption=caption_text.format(BlackJackTimer.format_seconds_to_time(time_on_move))
         )
 
-        await timer.setup_timer(seconds_expiry=time_on_move, message_id=result_photo_msg.message_id)
-        await timer.start_timer()
+        timer = BlackJackTimer(
+            bot=bot, game_number=game.number,
+            chat_id=player_id, message_id=result_photo_msg.message_id,
+            text_template=caption_text, markup=markup
+        )
+        await timer.start()
 
         return result_photo_msg.photo[0].file_id
 

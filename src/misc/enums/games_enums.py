@@ -2,16 +2,22 @@ from enum import IntEnum, Enum
 from typing import Final
 
 
-EvenUnevenCoefficients: Final = {
-    "A": 1.5,
-    "B": 1.5,
-    "C": 1.5,
-    "D": 1.5,
-    "E": 2.5,
-    "F": 2.5,
-    "G": 5,
-    "H": 5
-}
+class EvenUnevenBetOption(Enum):
+    LESS_7 = 'A'
+    EQUALS_7 = 'B'
+    GREATER_7 = 'C'
+    EVEN = 'D'
+    UNEVEN = 'E'
+    A_EQUALS_B = 'F'
+
+    def get_coefficient(self) -> float:
+        match self:
+            case self.LESS_7: return 1.4
+            case self.EQUALS_7: return 3
+            case self.GREATER_7: return 1.4
+            case self.EVEN: return 1.5
+            case self.UNEVEN: return 1.5
+            case self.A_EQUALS_B: return 3
 
 
 class BaccaratBettingOption(IntEnum):
