@@ -21,6 +21,7 @@ class EvenUnevenBetOption(Enum):
 
 
 class BaccaratBettingOption(IntEnum):
+    NOT_MOVED = 0
     PLAYER = 1
     TIE = 2
     BANKER = 3

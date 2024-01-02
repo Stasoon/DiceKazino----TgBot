@@ -2,20 +2,38 @@ from decimal import Decimal
 
 from tortoise.functions import Sum
 
-from settings import Config
 from ..models import ReferralBonus
-from ..users import get_referrer_id_of_user, get_user_or_none
+from ..users import get_referrer_id_of_user, get_user_or_none, get_referrals_count_by_telegram_id
+
+
+async def calculate_referral_bonus_percent(user_id: int):
+    referrals_count = await get_referrals_count_by_telegram_id(user_id=user_id)
+
+    if referrals_count < 5:
+        multiplier = 0.5
+    elif 5 <= referrals_count < 15:
+        multiplier = 0.6
+    elif 15 <= referrals_count < 50:
+        multiplier = 0.7
+    elif 50 <= referrals_count < 500:
+        multiplier = 0.8
+    else:
+        multiplier = 1
+
+    return multiplier/100
 
 
 async def accrue_referral_bonus(referred_user_id: int, game_winning_amount: Decimal):
     """Начислить реферальный бонус"""
-    referral_bonus = game_winning_amount * Decimal(Config.Payments.percent_to_referrer)
-
     referrer_id = await get_referrer_id_of_user(user_id=referred_user_id)
     referrer = await get_user_or_none(referrer_id)
 
     if not referrer:
         return
+
+    # Высчитываем сумму бонуса
+    multiplier = await calculate_referral_bonus_percent(user_id=referrer_id)
+    referral_bonus = game_winning_amount * multiplier
 
     # Начисляем бонус тому, кто пригласил юзера
     referrer.balance += referral_bonus

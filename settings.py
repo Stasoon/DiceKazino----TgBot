@@ -17,16 +17,15 @@ class Config:
         WITHDRAWS_CHANNEL_ID: Final[int] = int(os.getenv('WITHDRAWS_CHANNEL_ID'))
 
         MAX_BET = 50_000_000.0
-        percent_to_referrer: Final[float] = float(0.05)
-        winning_commission: Final[float] = float(0.05)
+        winning_commission: Final[float] = 0.05
 
-        min_withdraw_amount: Final[float] = float(50)
+        min_withdraw_amount: Final[float] = float(100)
         min_deposit_amount: Final[float] = float(50)
 
     class Games:
         GAME_CHAT_ID: Final[int] = int(os.getenv('GAME_CHAT_ID'))
         EVEN_UNEVEN_CHAT_ID: Final[int] = int(os.getenv('EVEN_UNEVEN_CHAT_ID'))
-        CARD_IMAGES_PATH: Final[str] = 'cards'
+        CARD_IMAGES_PATH: Final[str] = 'resources/cards'
         min_bet_amount: Final[float] = float(30)
 
     class Database:

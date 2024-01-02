@@ -38,7 +38,7 @@ async def handle_top_players_callback(callback: CallbackQuery, callback_data: Me
 
 
 def register_top_players_handlers(router: Router):
-    router.message.register(handle_top_player_button, F.text == '🔝 Топ игроков')
+    router.message.register(handle_top_player_button, F.text.lower().contains('топ игроков'))
 
     router.callback_query.register(handle_top_players_callback, MenuNavigationCallback.filter(
         (F.branch == 'top_players') & F.option))

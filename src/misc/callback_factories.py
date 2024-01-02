@@ -3,6 +3,7 @@ from typing import Optional, Literal
 from aiogram.filters.callback_data import CallbackData
 
 from .enums import DepositMethod, WithdrawMethod, GameType, GameCategory
+from .enums.leagues import BandLeague
 
 
 class BlackJackCallback(CallbackData, prefix='BJ'):
@@ -37,6 +38,11 @@ class BandCallback(CallbackData, prefix='band'):
     """ Управление своей бандой """
     band_id: int
     action: Optional[str] = None
+
+
+class BandsMapCallback(CallbackData, prefix='bands_map'):
+    league: BandLeague
+    current_league: Optional[BandLeague] = None
 
 
 class BandMemberCallback(CallbackData, prefix='band_member'):

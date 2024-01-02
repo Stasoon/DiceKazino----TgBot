@@ -29,7 +29,7 @@ async def send_league_updated(band: Band, *args, **kwargs):
     for member in await bands.get_band_members(band_id=band.id):
         await bot.send_message(
             chat_id=member.telegram_id,
-            text=f'Поздравляю! Твоя банда перешла в новую лигу: {band.league.get_full_name()}'
+            text=f'Поздравляю! Твоя банда перешла в новую лигу: {band.league}'
         )
 
 

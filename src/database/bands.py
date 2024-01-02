@@ -70,13 +70,23 @@ async def get_sorted_band_members_with_scores(band_id: int) -> list[tuple[User, 
     return [(User(**member), member['band_members__score']) for member in members]
 
 
-async def get_bands_rating(count: int = 10):
+async def get_bands_global_rating(count: int = 10):
     bands = (
         await Band
         .all()
         .order_by('-score')
         .limit(count)
         .prefetch_related('creator')
+    )
+    return bands
+
+
+async def get_bands_rating_in_league(league: BandLeague, count: int = 6):
+    bands = (
+        await Band
+        .filter(league=league)
+        .order_by('-score')
+        .limit(count)
     )
     return bands
 
@@ -124,9 +134,7 @@ async def is_band_full(band: Band) -> bool:
 async def is_band_title_taken(title: str) -> bool:
     title = title.lower()
     # Ищем в базе данных запись с совпадающим названием в нижнем регистре
-    print(title)
     band_with_title = await Band.filter(title__iexact=title).first()
-    print(band_with_title)
     # Если такая запись найдена, возвращаем True (занято), иначе False (не занято)
     return band_with_title is not None
 

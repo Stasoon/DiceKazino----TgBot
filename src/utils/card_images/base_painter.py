@@ -21,7 +21,7 @@ class _GameImagePainter(ABC):
 
     def _draw_header(self, game_name: str):
         baccarat_text = f"{game_name} №{self.game.number}"
-        header_font = ImageFont.truetype("font.otf", 55)
+        header_font = ImageFont.truetype("resources/fonts/font.otf", 55)
         header_pos = (self.table_size[0] // 2, self.table_size[1] // 9 + 50)
 
         self.draw.text(

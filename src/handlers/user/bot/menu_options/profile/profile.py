@@ -6,6 +6,7 @@ from src.database import users
 from src.keyboards.user import UserMenuKeyboards
 from src.messages import UserMenuMessages
 from src.misc import (MenuNavigationCallback)
+from .activate_bonus import register_activate_bonus_handlers
 from .deposit import register_deposit_handlers
 from .withdraw import register_withdraw_handlers
 
@@ -25,8 +26,9 @@ async def get_profile_message_data(user_id: int) -> dict:
 # region Handlers
 
 
-async def handle_profile_button(message: Message):
+async def handle_profile_button(message: Message, state: FSMContext):
     """Показывает сообщение по нажатию на кнопку Профиль"""
+    await state.clear()
     msg_data = await get_profile_message_data(message.from_user.id)
     await message.answer(**msg_data)
 
@@ -54,7 +56,7 @@ async def handle_back_in_profile_callbacks(callback: CallbackQuery):
 
 def register_profile_handlers(router: Router):
     # обработка кнопки Профиль
-    router.message.register(handle_profile_button, F.text.contains('👤 Профиль'))
+    router.message.register(handle_profile_button, F.text.lower().contains('профиль'))
 
     # опция Реферальная система
     router.callback_query.register(
@@ -70,3 +72,4 @@ def register_profile_handlers(router: Router):
 
     register_deposit_handlers(router)
     register_withdraw_handlers(router)
+    register_activate_bonus_handlers(router)

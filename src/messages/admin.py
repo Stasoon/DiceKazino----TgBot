@@ -3,7 +3,9 @@ from typing import Literal
 
 from aiogram import html
 
+from src.database.models import Bonus
 from src.misc import WithdrawMethod, DepositMethod
+from src.utils.text_utils import format_float_to_rub_string
 
 
 class AdminMessages:
@@ -30,4 +32,16 @@ class AdminMessages:
                f'📆 {html.italic(datetime.strftime(datetime.now(), "%d/%m/%Y %H:%M"))} \n' \
                f'🏦 Метод: {method.value} \n' \
                f'{user_requisites_str}' \
-               f'💵 Сумма: {html.code(amount)} ₽'
+               f'💵 Сумма: {format_float_to_rub_string(amount)}'
+
+    @staticmethod
+    def get_bonus_description(bonus: Bonus):
+        text = (
+            f'🎁 Бонус\n\n'
+            f'Сумма: {format_float_to_rub_string(bonus.amount)} \n'
+            f'Код активации: <code>{bonus.activation_code}</code> \n'
+            f'Количество активаций: {bonus.total_activations_count} \n'
+            f'Осталось использований: {bonus.remaining_activations_count} \n'
+            f'Использован раз: {bonus.total_activations_count - bonus.remaining_activations_count} \n'
+        )
+        return text

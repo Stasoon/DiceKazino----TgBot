@@ -13,6 +13,7 @@ from src.messages.user.games.football import FootballMessages
 from src.messages.user.games.game_messages_base import BotGamesMessagesBase
 from src.misc import GameType, GameStatus
 from src.utils.game_messages_sender import GameMessageSender
+from src.utils.timer import BaseTimer
 
 
 def get_message_instance(game_type: GameType) -> BotGamesMessagesBase:
@@ -23,6 +24,15 @@ def get_message_instance(game_type: GameType) -> BotGamesMessagesBase:
             return FootballMessages
         case _:
             return UserPublicGameMessages
+
+
+class GameTimer(BaseTimer):
+
+    async def make_tick(self):
+        pass
+
+    async def on_time_left(self):
+        pass
 
 
 class BasicGameStrategy(GameStrategy):

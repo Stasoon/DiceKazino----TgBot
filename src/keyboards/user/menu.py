@@ -10,14 +10,15 @@ invite_link = 'tg://msg_url?url=https://t.me/{bot_username}?start=ref{user_tg_id
 
 
 class UserMenuKeyboards:
+
     # branch MAIN
     @staticmethod
     def get_main_menu() -> ReplyKeyboardMarkup:
         menu_kb = ReplyKeyboardMarkup(keyboard=[
             [KeyboardButton(text="🎰  Играть  🎰")],
-            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="🔝 Топ игроков")],
+            [KeyboardButton(text="🎩 Профиль"), KeyboardButton(text="🏆 Топ игроков")],
             [KeyboardButton(text="📰 События"), KeyboardButton(text="ℹ Информация")],
-            [KeyboardButton(text="🫂 Банды")]
+            [KeyboardButton(text="🕸️ Банды")]
             ],
             resize_keyboard=True, input_field_placeholder=None)
         return menu_kb
@@ -41,11 +42,25 @@ class UserMenuKeyboards:
 
         builder.button(text='💳 Пополнить', callback_data=MenuNavigationCallback(branch='profile', option='deposit'))
         builder.button(text='💰 Вывести', callback_data=MenuNavigationCallback(branch='profile', option='withdraw'))
-        builder.button(text='👥 Реферальная система',
-                       callback_data=MenuNavigationCallback(branch='profile', option='referral_system'))
+        builder.button(
+            text='🎁 Активировать бонус',
+            callback_data=MenuNavigationCallback(branch='profile', option='bonus')
+        )
+        builder.button(
+            text='👥 Реферальная система',
+            callback_data=MenuNavigationCallback(branch='profile', option='referral_system')
+        )
 
         builder.adjust(2, 1)
         return builder.as_markup()
+
+    @staticmethod
+    def get_cancel_reply() -> ReplyKeyboardMarkup:
+        return ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text="❌ Отмена")]],
+            resize_keyboard=True,
+            is_persistent=True
+        )
 
     @staticmethod
     def get_referral_system(bot_username: str, user_telegram_id: int) -> InlineKeyboardMarkup:

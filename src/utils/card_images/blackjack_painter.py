@@ -17,7 +17,7 @@ class BlackJackImagePainter(_GameImagePainter):
         self.table_size: Tuple[int, int] = (0, 0)
         self.draw: ImageDraw = None
 
-        self.points_font = ImageFont.truetype("font.otf", 40, encoding='UTF-8')
+        self.points_font = ImageFont.truetype("resources/fonts/font.otf", 40, encoding='UTF-8')
 
         self.cards_x_offset = 80
 
@@ -90,7 +90,7 @@ class BlackJackImagePainter(_GameImagePainter):
             await self._draw_card(card_file_name=card_file_name, xy=card_pos)
 
     async def get_image(self, is_finish: bool = False) -> BufferedInputFile:
-        with Image.open('cards/clear_table.png') as table:
+        with Image.open('resources/cards/clear_table.png') as table:
             self.table = table
             self.table_size = table.size
             self.draw = ImageDraw.Draw(table)

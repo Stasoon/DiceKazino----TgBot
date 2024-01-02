@@ -32,6 +32,8 @@ class BaccaratMessages(CreatableGamesMessages):
                     text += 'игрок \n'
                 case BaccaratBettingOption.BANKER.value:
                     text += 'банкир \n'
-                case _:
+                case BaccaratBettingOption.TIE.value:
                     text += 'ничья \n'
+                case _:
+                    text += 'пропустил ход'
         return text

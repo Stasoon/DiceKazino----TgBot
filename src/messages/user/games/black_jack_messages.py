@@ -23,7 +23,7 @@ class BlackJackMessages(BotGamesMessagesBase, CreatableGamesMessages):
             'Азарт, победы, страсть! \nВсе эти слова сразу же заполоняют твою голову, когда видишь эти игровые столы и выкрики других игроков из главного зала. \nИ ты точно хочешь составить им компанию.',
             '"А что если прямо сейчас поставить всё и выйти победителем?" — именно с этими мыслями ты заходишь в просторный зал казино.',
         )
-        return f"♠ Black Jack \n\n{random.choice(texts).format(player_name=player_name)}"
+        return f"♠ BlackJack \n\n{random.choice(texts).format(player_name=player_name)}"
 
     @staticmethod
     def ask_for_bet_amount(player_name: str) -> str:

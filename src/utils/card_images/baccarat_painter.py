@@ -16,7 +16,7 @@ class BaccaratImagePainter(_GameImagePainter):
         self.cards_x_spacing = self.card_size[0] - 110
         self.cards_y_spacing = self.card_size[1] // 5
 
-        self.points_font = ImageFont.truetype("font.otf", 45, encoding='UTF-8')
+        self.points_font = ImageFont.truetype("resources/fonts/font.otf", 45, encoding='UTF-8')
 
     async def __draw_tokens(self, table: Image):
         token_size = (80, 80)
@@ -38,7 +38,7 @@ class BaccaratImagePainter(_GameImagePainter):
                         break
                 random_rotation = randint(0, 360)
 
-                with Image.open('cards/token.png') as token_img:
+                with Image.open('resources/cards/token.png') as token_img:
                     token_img = token_img.resize(token_size, resample=HAMMING)
                     token_img = token_img.rotate(random_rotation, expand=True, resample=BICUBIC)
                     table.paste(token_img, (random_x_pos, pos), token_img)  # IDE ругается на pos, но всё нормально
@@ -59,7 +59,7 @@ class BaccaratImagePainter(_GameImagePainter):
         # рисуем карты игрока
         player_cards = await playing_cards.get_player_cards(game_number=self.game.number, player_id=1)
         for n, card in enumerate(player_cards):
-            with Image.open('cards/' + f"{card.value}{card.suit}" + '.png') as card_img:
+            with Image.open('resources/cards/' + f"{card.value}{card.suit}" + '.png') as card_img:
                 card_img = card_img.resize(self.card_size)
 
                 x = start_x_left + n * self.cards_x_spacing
@@ -82,7 +82,7 @@ class BaccaratImagePainter(_GameImagePainter):
         # рисуем карты дилера
         banker_cards = await playing_cards.get_dealer_cards(game_number=self.game.number)
         for n, card in enumerate(banker_cards):
-            with Image.open('cards/' + f"{card.value}{card.suit}" + '.png') as card_img:
+            with Image.open('resources/cards/' + f"{card.value}{card.suit}" + '.png') as card_img:
                 card_img = card_img.resize(self.card_size)
 
                 x = start_x_right - n * self.cards_x_spacing
@@ -91,7 +91,7 @@ class BaccaratImagePainter(_GameImagePainter):
                 self.table.paste(card_img, (x, y), card_img)
 
     async def get_image(self) -> BufferedInputFile:
-        with Image.open('cards/baccarat_table.png') as table:
+        with Image.open('resources/cards/baccarat_table.png') as table:
             self.table = table
             self.table_size = table.size
 

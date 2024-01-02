@@ -1,7 +1,8 @@
 from aiogram import F, Router, Bot
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InputMediaPhoto
 
 from settings import Config
 from src import bot
@@ -9,8 +10,9 @@ from src.database import bands
 from src.keyboards.user.bands import BandsKeyboards
 from src.messages.user.bands import BandsMessages
 from src.misc import MenuNavigationCallback
-from src.misc.callback_factories import BandCallback, BandMemberCallback
+from src.misc.callback_factories import BandCallback, BandMemberCallback, BandsMapCallback
 from src.misc.states import BandCreationStates, BandEditStates
+from src.utils.draw_bands_map import get_bands_map
 
 
 # region Utils
@@ -144,7 +146,11 @@ async def handle_new_band_title_message(message: Message, state: FSMContext):
 
 async def handle_back_to_bands_menu(callback: CallbackQuery):
     menu_message_data = await __get_bands_menu_message_data(for_user_id=callback.from_user.id)
-    await callback.message.edit_text(**menu_message_data)
+    try:
+        await callback.message.edit_text(**menu_message_data)
+    except TelegramBadRequest:
+        await callback.message.delete()
+        await callback.message.answer(**menu_message_data)
 
 
 async def handle_show_my_band(callback: CallbackQuery, callback_data: BandCallback):
@@ -274,13 +280,40 @@ async def handle_band_opponents(callback: CallbackQuery, callback_data: BandCall
 
 # РЕЙТИНГ БАНД
 async def handle_rating_callback(callback: CallbackQuery):
-    bands_rating = await bands.get_bands_rating(count=10)
+    bands_rating = await bands.get_bands_global_rating(count=10)
 
     user_band = await bands.get_user_band(telegram_id=callback.from_user.id)
     user_band_rank = await bands.get_band_rating_position(target_band=user_band)
     markup = BandsKeyboards.get_global_rating(bands_rating, user_band, user_band_rank)
 
     await callback.message.edit_text(text='Рейтинг банд', reply_markup=markup)
+
+
+# ГОРОД
+
+async def handle_city_callback(callback: CallbackQuery):
+    await callback.message.delete()
+    await callback.message.answer_photo(
+        caption='Город', reply_markup=BandsKeyboards.get_city(), photo=BandsMessages.get_global_map_photo()
+    )
+    # await callback.message.edit_media()
+
+
+async def handle_band_map_callback(callback: CallbackQuery, callback_data: BandsMapCallback):
+    if callback_data.league == callback_data.current_league:
+        await callback.answer()
+        return
+
+    top_league_bands = await bands.get_bands_rating_in_league(league=callback_data.league, count=6)
+    band_names = [band.title for band in top_league_bands]
+    map_photo = get_bands_map(band_names=band_names, band_league=callback_data.league)
+
+    await callback.message.delete()
+    await callback.message.answer_photo(
+        photo=map_photo,
+        reply_markup=BandsKeyboards.get_city(current_league=callback_data.league),
+        caption=str(callback_data.league)
+    )
 
 
 def register_bands_handlers(router: Router):
@@ -328,5 +361,9 @@ def register_bands_handlers(router: Router):
     )
 
     # Город
+    router.callback_query.register(
+        handle_city_callback, MenuNavigationCallback.filter((F.branch == 'bands') & (F.option == 'city'))
+    )
+    router.callback_query.register(handle_band_map_callback, BandsMapCallback.filter())
 
     # Информация

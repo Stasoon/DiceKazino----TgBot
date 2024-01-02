@@ -125,16 +125,12 @@ class EvenUnevenPlayerBet(Model):
 # region Transactions
 
 class Bonus(Model):
-    amount = fields.DecimalField(max_digits=10, decimal_places=2)
-    activation_code = fields.CharField(max_length=20, unique=True)
-    available_activations_count = fields.IntField()  # сколько раз доступна активация
+    amount = fields.DecimalField(max_digits=6, decimal_places=2)
+    activation_code = fields.CharField(max_length=25, unique=True)
+    total_activations_count = fields.IntField(default=100)  # общее количество активаций
+    remaining_activations_count = fields.IntField(default=100)  # сколько активаций осталось
     timestamp = fields.DatetimeField(auto_now_add=True)
     is_active = fields.BooleanField(default=True)
-
-    def __str__(self):
-        return f'Бонус на {self.amount} ₽ \n' \
-               f'Создан: {self.timestamp} \n' \
-               f'Активационный код: {self.activation_code} \n'
 
     class Meta:
         table = "bonuses"

@@ -10,7 +10,7 @@ class BandLeague(IntEnum):
     MAGNATES = auto()  # Магнаты
     MONOPOLISTS = auto()  # Монополисты
 
-    def get_full_name(self) -> str:
+    def __str__(self):
         match self:
             case self.CROOKS:
                 return 'Жулики'

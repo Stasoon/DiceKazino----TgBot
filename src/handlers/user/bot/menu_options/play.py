@@ -9,6 +9,7 @@ from src.keyboards.user import UserPrivateGameKeyboards, UserMenuKeyboards
 from src.messages import get_full_game_info_text
 from src.messages.user import UserMenuMessages, UserPrivateGameMessages, GameErrors
 from src.messages.user.games import BlackJackMessages, BaccaratMessages, BasketballMessages
+from src.messages.user.games.football import FootballMessages
 from src.utils.game_validations import validate_and_extract_bet_amount, check_rights_and_cancel_game
 from src.misc import MenuNavigationCallback, GamesCallback, GameCategory, GameType, GamePagesNavigationCallback
 from src.misc.states import EnterBetStates
@@ -36,7 +37,7 @@ def get_creatable_game_message_instance(game_type: GameType):
         case GameType.BASKETBALL:
             return BasketballMessages
         case GameType.FOOTBALL:
-            pass
+            return FootballMessages
 
 
 async def get_play_message_data(user_id: int) -> dict:
@@ -212,8 +213,9 @@ async def handle_bet_amount_message(message: Message, state: FSMContext):
         game=created_game, user_telegram_id=message.from_user.id, amount=bet_amount
     )
     # отвечаем, что игра создана
+    message_instance = get_creatable_game_message_instance(game_type=created_game.game_type)
     await message.answer(
-        text=UserPrivateGameMessages.get_game_created(created_game),
+        text=message_instance.get_game_created(game_number=created_game.number),
         reply_markup=UserMenuKeyboards.get_main_menu(),
         parse_mode='HTML',
     )

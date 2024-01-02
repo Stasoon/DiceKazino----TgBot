@@ -12,6 +12,10 @@ class BandCreationStates(StatesGroup):
     enter_band_title = State()
 
 
+class ActivateBonusStates(StatesGroup):
+    wait_for_code = State()
+
+
 class BandEditStates(StatesGroup):
     edit_band_title = State()
     consider_delete_band = State()

@@ -10,11 +10,11 @@ class FootballMessages(BotGamesMessagesBase, CreatableGamesMessages):
     @staticmethod
     def get_game_created(game_number: int):
         texts = (
-            'Супер, матч №{game_number} создан! Подожди, пока кто-то другой решит с тобой потягаться.',
-            'Матч №{game_number} создан! Теперь подождем твоего соперника, он скоро присоединится к матчу.',
-            'Матч №{game_number} создан. Пока ты ждешь соперника, в мыслях ты уже представляешь, куда потратишь деньги с выигрыша.',
+            '⚽ Супер, матч №{game_number} создан! \n\nПодожди, пока кто-то другой решит с тобой потягаться.',
+            '⚽ Матч №{game_number} создан! \n\nТеперь подождем твоего соперника, он скоро присоединится к матчу.',
+            '⚽ Матч №{game_number} создан. \n\nПока ты ждешь соперника, в мыслях ты уже представляешь, куда потратишь деньги с выигрыша.',
         )
-        return random.choice(texts).format(game_number)
+        return random.choice(texts).format(game_number=game_number)
 
     @staticmethod
     def get_category_description(player_name: str) -> str:

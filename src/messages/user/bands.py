@@ -16,6 +16,8 @@ def get_member_link(member: User):
 
 class BandsMessages:
 
+    # Статья с фотографиями:  https://telegra.ph/SpotDice-resources-01-02
+
     @staticmethod
     def get_bands_menu() -> str:
         return 'Меню банд'
@@ -62,3 +64,7 @@ class BandsMessages:
     @staticmethod
     def ask_for_member_to_kick() -> str:
         return 'Нажмите на пользователя, которого хотите исключить:'
+
+    @staticmethod
+    def get_global_map_photo() -> str:
+        return 'https://telegra.ph/file/0f6ba0c9f77dc865169a5.png'

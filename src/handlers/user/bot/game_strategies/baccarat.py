@@ -219,7 +219,7 @@ class BaccaratTimer(BaseTimer):
         else:
             await self.bot.send_message(chat_id=self.timer.chat_id, text="Время на ход вышло!")
             await game_scores.add_player_move_if_not_moved(
-                self.game, self.timer.chat_id, move_value=BaccaratBettingOption.PLAYER.value
+                self.game, self.timer.chat_id, move_value=BaccaratBettingOption.NOT_MOVED.value
             )
 
             if await game_scores.is_all_players_moved(self.game):

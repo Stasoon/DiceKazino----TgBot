@@ -1,7 +1,8 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardMarkup
 
 from src.database.models import Band, User
-from src.misc.callback_factories import BandCallback, BandMemberCallback, MenuNavigationCallback
+from src.misc.callback_factories import BandCallback, BandMemberCallback, MenuNavigationCallback, BandsMapCallback
+from src.misc.enums.leagues import BandLeague
 
 
 def number_to_emoji(number: int) -> str:
@@ -106,13 +107,30 @@ class BandsKeyboards:
 
         for n, band in enumerate(bands, start=1):
             creator_link = band.creator.get_mention_url()
-            builder.button(text=f"{number_to_emoji(n)} {band.title} - {band.league.get_full_name()}", url=creator_link)
+            builder.button(text=f"{number_to_emoji(n)} {band.title} - {band.league}", url=creator_link)
 
         if user_band and user_band_ranking and len(bands) < user_band_ranking:
             builder.button(text='...', callback_data='*')
-            text = f"{number_to_emoji(user_band_ranking)} {user_band.title} - {user_band.league.get_full_name()}"
+            text = f"{number_to_emoji(user_band_ranking)} {user_band.title} - {user_band.league}"
             builder.button(text=text, url=user_band.creator.get_mention_url())
 
         builder.button(text='🔙 Назад', callback_data=MenuNavigationCallback(branch='bands', option=None))
         builder.adjust(1)
         return builder.as_markup()
+
+    @staticmethod
+    def get_city(current_league: BandLeague = None) -> InlineKeyboardMarkup:
+        builder = InlineKeyboardBuilder()
+
+        for league in BandLeague:
+            if league != BandLeague.CROOKS:
+                text = f"{'🔘' if league == current_league else ''} {league}"
+                builder.button(text=text, callback_data=BandsMapCallback(league=league, current_league=current_league))
+
+        builder.adjust(2)
+        navigation_builder = InlineKeyboardBuilder()
+        if current_league is None:
+            navigation_builder.button(text='🔙 Назад', callback_data=MenuNavigationCallback(branch='bands', option=None))
+        else:
+            navigation_builder.button(text='🔙 На общую карту', callback_data=MenuNavigationCallback(branch='bands', option='city'))
+        return builder.attach(navigation_builder).as_markup()

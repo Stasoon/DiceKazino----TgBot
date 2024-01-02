@@ -16,7 +16,7 @@ class EvenUnevenMessages:
     async def get_top() -> str:
         emoji_numbers = ('0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣')
         top_players = await get_top_winners_by_amount(category=GameCategory.EVEN_UNEVEN, days_back=7, limit=6)
-        text = 'Топ победителей: \n\n'
+        text = '🏆 Топ победителей: \n\n'
         for n, player in enumerate(top_players, start=1):
             text += f'{emoji_numbers[n]} {str(player)} — {format_float_to_rub_string(player.winnings_amount)}\n'
         return text
